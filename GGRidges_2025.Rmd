@@ -1,0 +1,108 @@
+---
+title: "GGRidges"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidybayes)
+library(magrittr)
+library(dplyr)
+library(ggplot2)
+library(rstan)
+library(emmeans)
+library(broom)
+library(brms)
+library(modelr)
+library(forcats)
+library(cowplot)
+library(RColorBrewer)
+library(gganimate)
+library(ggridges)
+library(viridis)
+library(ggExtra)
+```
+
+## R Markdown
+
+```{r}
+load("Cedar_single_PRED.Rdata")
+load("Cedar_single_REF.Rdata")
+load("Craters_single_PRED.Rdata")
+load("Craters_single_REF.Rdata")
+load("KG_Magic_single_PRED.Rdata")
+load("KG_Magic_single_REF.Rdata")
+load("JN_Magic_single_PRED.Rdata")
+load("JN_Magic_single_REF.Rdata")
+load("RR_single_PRED.Rdata")
+load("RR_single_REF.Rdata")
+
+colnames(Cedar_single_PRED) <- c('pos_draws','chem_type','Site')
+colnames(Cedar_single_REF) <- c('pos_draws','chem_type','Site')
+
+REF <- rbind (Cedar_single_REF, Craters_single_REF, KG_Magic_single_REF, JN_Magic_single_ref, RR_single_REF)
+
+REF$Chemistry_Data <- "Reference Chemistry"
+
+PRED <- rbind (Cedar_single_PRED, Craters_single_PRED, KG_Magic_single_PRED, JN_Magic_single_pred, RR_single_PRED)
+
+PRED$Chemistry_Data <- "Predicted Chemistry"
+
+All <- rbind (REF, PRED)
+
+All$chem_type <- gsub("_REF", "", All$chem_type)
+All$chem_type <- gsub("_Ref", "", All$chem_type)
+All$chem_type <- gsub("_ref", "", All$chem_type)
+All$chem_type <- gsub("_pred", "", All$chem_type)
+All$chem_type <- gsub("_PRED", "", All$chem_type)
+All$chem_type <- gsub("CP", "Crude Proteins", All$chem_type)
+
+require(ggplot2)
+require(ggExtra)
+require(ggridges)
+#Make All Plots
+
+All$Site <- factor(All$Site,levels=c("KG_Magic","JN_Magic","Cedar", "Craters", "RR"))
+pdf("All_Posterior_Draws.pdf")
+
+All_Plot <- ggplot2::ggplot(All, aes(x = pos_draws, y = Site, color = Chemistry_Data, fill = Chemistry_Data)) + 
+  ggtitle("Posterior Draws") + 
+  xlab("Posterior Distribution") + 
+  ylab("Site") + 
+  geom_density_ridges(alpha = 0.5, rel_min_height = 0.01) + 
+  facet_wrap(~chem_type) + 
+  theme_ridges(grid = TRUE) + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size=12)) + 
+  geom_vline(aes(xintercept = 0)) + 
+  theme(legend.position = "bottom") + 
+  theme(axis.title.x = element_text(hjust = 0.5), axis.title.y = element_text(hjust = 0.5)) +
+  theme(legend.title = element_blank()) + 
+  theme( panel.grid.major.x = element_blank()) +
+  scale_y_discrete(expand = expansion(mult = c(0.01, 0.25)))
+print(All_Plot)
+dev.off()
+
+#Make Reference Plots
+
+#All_REF_Plot <- ggplot2::ggplot(REF, aes(x = pos_draws, y = Site)) + ggtitle("Reference") + xlab("Posterior Distribution") + ylab("Site") + geom_density_ridges(aes(fill=Site), scale = 2) + facet_wrap(~chem_type) + scale_fill_manual(values = c("#00AFBB", "#E7B800", "#FC4E07", "steelblue", "sienna1")) + theme(legend.position = "none")
+#All_REF_Plot
+
+#Make Prediction Plots
+
+#Camphor_PRED_Plot <- ggplot2::ggplot(PRED_Camphor, aes(x = pos_draws, y = Site)) + ggtitle("Camphor Reference") + xlab("Posterior Distribution") + ylab("Site") + geom_density_ridges(aes(fill=Site)) + scale_fill_manual(values = c("#00AFBB", "#E7B800", "#FC4E07", "steelblue", "sienna1")) + theme(legend.position = "none")
+#Camphor_PRED_Plot
+
+#CP_PRED_Plot <- ggplot2::ggplot(PRED_CP, aes(x = pos_draws, y = Site)) + ggtitle("CP Reference") + xlab("Posterior Distribution") + ylab("Site") + geom_density_ridges(aes(fill=Site)) + scale_fill_manual(values = c("#00AFBB", "#E7B800", "#FC4E07", "steelblue", "sienna1")) + theme(legend.position = "none")
+#CP_PRED_Plot
+
+#Coumarin_PRED_Plot <- ggplot2::ggplot(PRED_Coumarin, aes(x = pos_draws, y = Site)) + ggtitle("Coumarin Reference") + xlab("Posterior Distribution") + ylab("Site") + geom_density_ridges(aes(fill=Site)) + scale_fill_manual(values = c("#00AFBB", "#E7B800", "#FC4E07", "steelblue", "sienna1")) + theme(legend.position = "none")
+#Coumarin_PRED_Plot
+
+#pdf("PRED_Plots.pdf")
+#require(gridExtra)
+#PRED_PLOTS <- grid.arrange(Camphor_PRED_Plot, CP_PRED_Plot, Coumarin_PRED_Plot, ncol = 3)
+#print(PRED_PLOTS)
+#dev.off()
+
+```
+
