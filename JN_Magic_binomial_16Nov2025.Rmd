@@ -1,0 +1,843 @@
+---
+title: "Chapter 2 - Bite Data - Chemistry - Predicted Chemistry at JN Magic"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+This R Markdown file will input data for the JN Magic site (Magic = Camas Prairie) and prepare it for three downstream analyses determining the effects of chemistry and predicted chemistry on bite data. 
+
+JN Magic is a pygmy rabbit site that underwent stratified random collection of data, with 3-6 plants sampled per patch and patches randomly selected within distance strata for dist to burrow (0-20m; 20-40m; 40-100m). While data points include a combination of individual plants and pooled samples, only the individual plant samples were used. Data was collected in Summer and Winter, and had no upper limit for the number of bites counted. A negative binomial distribution was used to analyze this data set. 
+
+In addition to these data, individual pellet counts within a meter of each individual shrub. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#Load libraries
+library("rprojroot")
+library("loo")
+library("rstanarm")
+options(mc.cores = parallel::detectCores())
+library("ggplot2")
+library("bayesplot")
+theme_set(bayesplot::theme_default(base_family = "sans"))
+library("MASS")
+library("lme4")
+library("brms")
+library("rstanarm")
+
+```
+
+# Functions
+
+These functions are used throughout the markdown, and include ways for evaluating predictive error and standardizing the inputs. 
+
+## Root mean square error (RSME)
+This shows the difference between an estimator and the values observed, and provides a measure of accuracy.
+
+## Mean absolute error (MAE)
+This is a measure of errors between paired observations expressing the same phenomenon, and is one of a number of ways of comparing forecasts with their eventual outcomes.
+
+## Residual sum of squares (RSS)
+This is a measure of discrepancy between the data (x) and the model (d). A small value indicates a good fit between the data and the model (0 is a perfect fit). This number can be infinite, as far as I'm aware.
+
+## Total sum of squares (TSS)
+
+This is the explained sum of squares plus the RSS. 
+
+## R2
+
+The proportion of variance explained by the model out of the total variance in the data (0-1). Closer to one means 100% fit. 
+
+## splt
+
+Tidies up the data by removing the double names
+
+## stdize
+
+Putting all of the covariates on the same scale 
+http://www.stat.columbia.edu/~gelman/research/published/standardizing7.pdf
+
+
+```{r}
+# This first function is for root mean square, where m is the model predictions, and x is the data.
+rmse <- function(m,x) 
+{
+  sqrt(mean((x-m)^2,na.rm=T))
+}
+
+# This function is for mean absolute error, where m is the model predictions, and x is the data. 
+mae <- function(m,x)
+{
+  mean(abs(((x-m))),na.rm=T)
+}
+
+# This function is for residual sum of squares
+RSS <- function(m,x) 
+{
+  sum((((m))-(x))^2)
+}
+
+# This function is for total sum of squares
+TSS <- function(x) 
+{
+  sum(((x)-(mean(x)))^2)
+  }
+
+R2<-function(m,x,logo=F) {
+  mors<-na.omit(data.frame(m,x))
+  m<-mors$m
+  x<-mors$x
+  
+  if(logo==F) {return(1-RSS(m,x)/TSS(x))} else {return(1-RSS1(m,x)/TSS1(x))}
+}
+
+# Split names
+splt=function(x,split,num) {
+  
+  x<-as.character(x)
+  p1=strsplit(x,split=split,fixed=T)
+  p2=unlist(lapply(p1,"[",num))
+  return(p2)
+}
+
+# Standardize covariates
+stdize<-function(x) {(x-mean(x,na.rm=T))/(2*sd(x,na.rm=T))}
+
+```
+
+# Read in Files
+
+```{r}
+
+# Main data set that includes all the sites, chemotype levels. We're setting periods and blank spaces to read in to R as NA:
+Phenolics <- read.csv("Phenolics.csv", na.strings=c("."," ","","NA"))
+Monoterpenes <- read.csv("Monoterpenes.csv", na.strings=c("."," ","","NA"))
+Crude_Protein <- read.csv("Crude_protein.csv", na.strings=c("."," ","","NA"))
+
+# Subset datasets to sites:
+JN_Magic_P <-subset(Phenolics,Phenolics$Site=="JNMagic") 
+JN_Magic_M <-subset(Monoterpenes, Monoterpenes$Site=="JNMagic") 
+JN_Magic_CP <-subset(Crude_Protein,Crude_Protein$Site=="JNMagic") 
+
+# See the distribution of number of bites. You'll see there is no averaged data here. 
+unique(JN_Magic_P$Bites)
+unique(JN_Magic_M$Bites)
+unique(JN_Magic_CP$Bites)
+
+## Check out the dimensions of the input data:
+# Bites
+length(JN_Magic_P$Bites) #531
+table(JN_Magic_P$Bites)
+
+length(JN_Magic_M$Bites) #578 
+table(JN_Magic_M$Bites)
+
+length(JN_Magic_CP$Bites) #587
+table(JN_Magic_CP$Bites)
+
+# Season
+table(JN_Magic_P$Season) #summer 290 #winter 241 
+table(JN_Magic_M$Season) #summer 334 #winter 244 
+table(JN_Magic_CP$Season) #summer 343 #winter 244 
+
+# Species
+table(JN_Magic_P$Species) #dwarf 97, dwarf_comp 41, wyo_comp 108, wyoming 285
+table(JN_Magic_M$Species) #dwarf 104, dwarf_comp 44, wyo_comp 116, wyoming 314
+table(JN_Magic_CP$Species) #dwarf 107, dwarf_comp 46, wyo_comp 115, wyoming 319
+
+# Plant height
+table(JN_Magic_P$PlantSize) #table of extent 0
+table(JN_Magic_M$PlantSize) #table of extent 0
+table(JN_Magic_CP$PlantSize) #table of extent 0
+# Not available at this site
+
+# Patch type
+table(JN_Magic_P$PatchType) #dwarf 138, off 201, on 192
+table(JN_Magic_M$PatchType) #dwarf 148, off 210, on 220
+table(JN_Magic_CP$PatchType) #dwarf 153, off 210, on 224
+
+# Patch_ID here is the random effect
+table(JN_Magic_P$Patch_ID)[-which(table(JN_Magic_P$Patch_ID)==0)] #named integer(0)
+table(JN_Magic_M$Patch_ID)[-which(table(JN_Magic_M$Patch_ID)==0)] #named integer(0)
+table(JN_Magic_CP$Patch_ID)[-which(table(JN_Magic_CP$Patch_ID)==0)] #named integer(0)
+
+# Standardize our covariates
+JN_Magic_CP$CP_Pred_std<-stdize(JN_Magic_CP$CP_newpred)
+JN_Magic_P$Phenolics_Pred_std<-stdize(JN_Magic_P$Phenolics_newpred)
+JN_Magic_M$Monoterpenes_Pred_std<-stdize(JN_Magic_M$Monoterpenes_newpred)
+
+JN_Magic_CP$CP_Ref_std<-stdize(JN_Magic_CP$CP_Ref)
+JN_Magic_P$Phenolics_Ref_std<-stdize(JN_Magic_P$Phenolics_Ref)
+JN_Magic_M$Monoterpenes_Ref_std<-stdize(JN_Magic_M$Monoterpenes_Ref)
+
+JN_Magic_CP$Patch_ID<-droplevels(as.factor(paste("p",JN_Magic_CP$Patch_ID,sep="_")))
+JN_Magic_P$Patch_ID<-droplevels(as.factor(paste("p",JN_Magic_P$Patch_ID,sep="_")))
+JN_Magic_M$Patch_ID<-droplevels(as.factor(paste("p",JN_Magic_M$Patch_ID,sep="_")))
+
+# Create the data set that we use moving forward
+JN_Magic_P_use<-na.omit(data.frame(Bites=JN_Magic_P$Bites,PatchType=JN_Magic_P$PatchType,Season=JN_Magic_P$Season, Phenolics_Pred_std=JN_Magic_P$Phenolics_Pred_std,Patch_ID=JN_Magic_P$Patch_ID, Phenolics_Ref_std=JN_Magic_P$Phenolics_Ref_std))
+
+JN_Magic_M_use<-na.omit(data.frame(Bites=JN_Magic_M$Bites,PatchType=JN_Magic_M$PatchType,Season=JN_Magic_M$Season, Monoterpenes_Pred_std=JN_Magic_M$Monoterpenes_Pred_std,Patch_ID=JN_Magic_M$Patch_ID, Monoterpenes_Ref_std=JN_Magic_M$Monoterpenes_Ref_std))
+
+JN_Magic_CP_use<-na.omit(data.frame(Bites=JN_Magic_CP$Bites,PatchType=JN_Magic_CP$PatchType,Season=JN_Magic_CP$Season,CP_Pred_std=JN_Magic_CP$CP_Pred_std,Patch_ID=JN_Magic_CP$Patch_ID, CP_Ref_std=JN_Magic_CP$CP_Ref_std))
+
+# If bites >0, then 1. If not, 0 (creating a binomial distribution)
+JN_Magic_P_use$Bites_Binomial <- ifelse(JN_Magic_P_use$Bites > 0, 1, 0)
+JN_Magic_M_use$Bites_Binomial <- ifelse(JN_Magic_M_use$Bites > 0, 1, 0)
+JN_Magic_CP_use$Bites_Binomial <- ifelse(JN_Magic_CP_use$Bites > 0, 1, 0)
+
+## Check out the dimensions of the final data:
+# Bites
+length(JN_Magic_P_use$Bites_Binomial) #382
+table(JN_Magic_P_use$Bites)
+
+length(JN_Magic_M_use$Bites_Binomial) #418
+table(JN_Magic_M_use$Bites)
+
+length(JN_Magic_CP_use$Bites_Binomial) #426
+table(JN_Magic_CP_use$Bites)
+
+# Season
+table(JN_Magic_P_use$Season) #summer 215, winter 167
+table(JN_Magic_M_use$Season) #summer 247, winter 171
+table(JN_Magic_CP_use$Season) #summer 255, winter 171
+
+# Patch type
+table(JN_Magic_P_use$PatchType) #dwarf 97, off 146, on 139
+table(JN_Magic_M_use$PatchType) #dwarf 104, off 154, on 160
+table(JN_Magic_CP_use$PatchType) #dwarf 107, off 155, on 164
+
+#Mins and Maxes
+
+min(JN_Magic_P_use$Phenolics_Ref_std) #-0.7762658
+max(JN_Magic_P_use$Phenolics_Ref_std) #3.383833
+min(JN_Magic_P_use$Phenolics_Pred_std) #-1.376069
+max(JN_Magic_P_use$Phenolics_Pred_std) #1.392438
+
+min(JN_Magic_M_use$Monoterpenes_Ref_std) #-1.020171
+max(JN_Magic_M_use$Monoterpenes_Ref_std) #1.913172
+min(JN_Magic_M_use$Monoterpenes_Pred_std) #-1.153206
+max(JN_Magic_M_use$Monoterpenes_Pred_std) #1.281484
+
+min(JN_Magic_CP_use$CP_Ref_std) #-3.144783
+max(JN_Magic_CP_use$CP_Ref_std) #1.785229
+min(JN_Magic_CP_use$CP_Pred_std) #-1.558475
+max(JN_Magic_CP_use$CP_Pred_std) #1.877752
+
+## Descriptive Stats
+
+# Phenolics
+mean(JN_Magic_P$Phenolics_Ref, na.rm=TRUE) #10.94627
+sd(JN_Magic_P$Phenolics_Ref, na.rm=TRUE) #6.084433
+mean(JN_Magic_P$Phenolics_newpred, na.rm=TRUE) #11.15397
+sd(JN_Magic_P$Phenolics_newpred, na.rm=TRUE) #4.386831
+
+mean(JN_Magic_P_use$Phenolics_Ref_std, na.rm=TRUE) #-0.00351068
+sd(JN_Magic_P_use$Phenolics_Ref_std, na.rm=TRUE) #0.5331163
+mean(JN_Magic_P_use$Phenolics_Pred_std, na.rm=TRUE) #-0.008021606
+sd(JN_Magic_P_use$Phenolics_Pred_std, na.rm=TRUE) #0.5114148
+
+# Monoterpenes
+mean(JN_Magic_M$Monoterpenes_Ref, na.rm=TRUE) #787.6531
+sd(JN_Magic_M$Monoterpenes_Ref, na.rm=TRUE) #332.5367
+mean(JN_Magic_M$Monoterpenes_newpred, na.rm=TRUE) #790.5258
+sd(JN_Magic_M$Monoterpenes_newpred, na.rm=TRUE) #306.3466
+
+mean(JN_Magic_M_use$Monoterpenes_Ref_std, na.rm=TRUE) #-0.006749789
+sd(JN_Magic_M_use$Monoterpenes_Ref_std, na.rm=TRUE) #0.5160459
+mean(JN_Magic_M_use$Monoterpenes_Pred_std, na.rm=TRUE) #0.003263942
+sd(JN_Magic_M_use$Monoterpenes_Pred_std, na.rm=TRUE) #0.5185673
+
+# Crude Proteins
+mean(JN_Magic_CP$CP_Ref, na.rm=TRUE) #10.32099
+sd(JN_Magic_CP$CP_Ref, na.rm=TRUE) #1.64097
+mean(JN_Magic_CP$CP_newpred, na.rm=TRUE) #10.32401
+sd(JN_Magic_CP$CP_newpred, na.rm=TRUE) #1.217685
+
+mean(JN_Magic_CP_use$CP_Ref_std, na.rm=TRUE) #0.008925703
+sd(JN_Magic_CP_use$CP_Ref_std, na.rm=TRUE) #0.5228426
+mean(JN_Magic_CP_use$CP_Pred_std, na.rm=TRUE) #0.02435716
+sd(JN_Magic_CP_use$CP_Pred_std, na.rm=TRUE) #0.5136612
+
+
+```
+
+# Question 1: what are the effects of chemistry on bites?
+
+```{r}
+
+mREF_JN_Magic_single_P <-rstanarm::stan_glmer(Bites_Binomial~Season+Phenolics_Ref_std+(1|Patch_ID),data=JN_Magic_P_use,cores=4, family="binomial", iter=10000)
+
+mREF_JN_Magic_single_M <-rstanarm::stan_glmer(Bites_Binomial~Season+Monoterpenes_Ref_std+(1|Patch_ID),data=JN_Magic_M_use,cores=4, family="binomial", iter=10000)
+
+mREF_JN_Magic_single_CP <-rstanarm::stan_glmer(Bites_Binomial~Season+CP_Ref_std+(1|Patch_ID),data=JN_Magic_CP_use,cores=4, family="binomial", iter=10000)
+
+png(file="./JN_Magic_Reference_P.png")
+summary(mREF_JN_Magic_single_P)
+plot(mREF_JN_Magic_single_P,regex_pars="_std")
+dev.off()
+save(mREF_JN_Magic_single_P, file = "mREF_JN_Magic_single_P.Rdata")
+
+png(file="./JN_Magic_Reference_M.png")
+summary(mREF_JN_Magic_single_M)
+plot(mREF_JN_Magic_single_M,regex_pars="_std")
+dev.off()
+save(mREF_JN_Magic_single_M, file = "mREF_JN_Magic_single_M.Rdata")
+
+png(file="./JN_Magic_Reference_CP.png")
+summary(mREF_JN_Magic_single_CP)
+plot(mREF_JN_Magic_single_CP,regex_pars="_std")
+dev.off()
+save(mREF_JN_Magic_single_CP, file = "mREF_JN_Magic_single_CP.Rdata")
+
+##############
+# Extract posteriors
+
+JN_Magic_single_ref_P <- as.data.frame(mREF_JN_Magic_single_P)
+Phenolics_out <- JN_Magic_single_ref_P$Phenolics_Ref_std
+Phenolics_ref_cat <- rep("Phenolics_ref",times=length(Phenolics_out))
+
+JN_Magic_single_ref_M <- as.data.frame(mREF_JN_Magic_single_M)
+Monoterpenes_out <- JN_Magic_single_ref_M$Monoterpenes_Ref_std
+Monoterpenes_ref_cat <- rep("Monoterpenes_ref",times=length(Monoterpenes_out))
+
+JN_Magic_single_ref_CP <- as.data.frame(mREF_JN_Magic_single_CP)
+CP_out <- JN_Magic_single_ref_CP$CP_Ref_std
+CP_ref_cat <- rep("CP_ref",times=length(CP_out))
+
+pos_draws <- c(Phenolics_out,CP_out,Monoterpenes_out)
+
+chem_type <- c(Phenolics_ref_cat,CP_ref_cat, Monoterpenes_ref_cat)
+
+JN_Magic_single_ref <- data.frame(pos_draws,chem_type)
+
+JN_Magic_single_ref$Site<-rep("JN_Magic",times=nrow(JN_Magic_single_ref))
+
+save(JN_Magic_single_ref,file="JN_Magic_single_ref.Rdata")
+
+```
+
+# Question 2: does inference on chemistry effects change when using predicted, rather than observed values?
+
+```{r}
+
+mPRED_JN_Magic_single_P <-rstanarm::stan_glmer(Bites_Binomial~Season+Phenolics_Pred_std+(1|Patch_ID),data=JN_Magic_P_use,cores=4, family="binomial", iter=10000)
+
+mPRED_JN_Magic_single_M <-rstanarm::stan_glmer(Bites_Binomial~Season+Monoterpenes_Pred_std+(1|Patch_ID),data=JN_Magic_M_use,cores=4, family="binomial", iter=10000)
+
+mPRED_JN_Magic_single_CP <-rstanarm::stan_glmer(Bites_Binomial~Season+CP_Pred_std+(1|Patch_ID),data=JN_Magic_CP_use,cores=4, family="binomial", iter=10000)
+
+png(file="./JN_Magic_Pred_P.png")
+summary(mPRED_JN_Magic_single_P)
+plot(mPRED_JN_Magic_single_P,regex_pars="_std")
+save(mPRED_JN_Magic_single_P, file = "mPRED_JN_Magic_single_P.Rdata")
+
+png(file="./JN_Magic_Pred_M.png")
+summary(mPRED_JN_Magic_single_M)
+plot(mPRED_JN_Magic_single_M,regex_pars="_std")
+save(mPRED_JN_Magic_single_M, file = "mPRED_JN_Magic_single_M.Rdata")
+
+png(file="./JN_Magic_Pred_CP.png")
+summary(mPRED_JN_Magic_single_CP)
+plot(mPRED_JN_Magic_single_CP,regex_pars="_std")
+save(mPRED_JN_Magic_single_CP, file = "mPRED_JN_Magic_single_CP.Rdata")
+
+##############
+# Extract posteriors
+
+JN_Magic_single_pred_P <- as.data.frame(mPRED_JN_Magic_single_P)
+Phenolics_out <- JN_Magic_single_pred_P$Phenolics_Pred_std
+Phenolics_pred_cat <- rep("Phenolics_pred",times=length(Phenolics_out))
+
+JN_Magic_single_pred_M <- as.data.frame(mPRED_JN_Magic_single_M)
+Monoterpenes_out <- JN_Magic_single_pred_M$Monoterpenes_Pred_std
+Monoterpenes_pred_cat <- rep("Monoterpenes_pred",times=length(Monoterpenes_out))
+
+JN_Magic_single_pred_CP <- as.data.frame(mPRED_JN_Magic_single_CP)
+CP_out <- JN_Magic_single_pred_CP$CP_Pred_std
+CP_pred_cat <- rep("CP_pred",times=length(CP_out))
+
+pos_draws <- c(Phenolics_out,CP_out,Monoterpenes_out)
+
+chem_type <- c(Phenolics_pred_cat,CP_pred_cat,Monoterpenes_pred_cat)
+
+JN_Magic_single_pred <- data.frame(pos_draws,chem_type)
+
+JN_Magic_single_pred$Site<-rep("JN_Magic",times=nrow(JN_Magic_single_pred))
+
+save(JN_Magic_single_pred,file="JN_Magic_single_pred.Rdata")
+
+```
+
+# Question 3: how does the predictions changes when using obs vs predicted chemistry?
+
+# https://onlinelibrary.wiley.com/doi/full/10.1111/ecog.02881
+#paper that describes our leave-one-out approach
+
+```{r}
+
+#####Phenolics
+
+# In this code, we are creating subsets of the data
+JN_Magic_levs_P <- unique(JN_Magic_P_use$Patch_ID)
+JN_Magic_in_P <- vector("list",length(JN_Magic_levs_P))
+JN_Magic_out_P <- vector("list",length(JN_Magic_levs_P))
+
+# We are testing three different models:
+# Model 1 is the observed chemistry
+# Model 2 is the predicted chemistry
+# Model 3 is a null model with no chemistry
+ref_preds_P <- vector("list",length(JN_Magic_levs_P))
+pred_preds_P <- vector("list",length(JN_Magic_levs_P))
+null_preds_P <- vector("list",length(JN_Magic_levs_P))
+#lists of predictions for each dataset
+
+for(i in 1:length(JN_Magic_levs_P)) #JN_Magic_levs is the unique number of patch ids
+{
+  # For each one of if (!requireNamespace("devtools", quietly = TRUE)){install.packages("devtools")}   devtools::install_github("jbisanz/qiime2R")the patch ids, this is looping through.
+  # If you want to trouble shoot this, put i = 1 into the r consul and run line by line. 
+  # Patch id out, running the model, and predicting on the left out patch
+  
+  # Data use to fit the model
+  JN_Magic_in_P[[i]] <- JN_Magic_P_use[-which(JN_Magic_P_use$Patch_ID==JN_Magic_levs_P[i]),]
+  
+   # Data used to test the model
+  JN_Magic_out_P[[i]] <- JN_Magic_P_use[which(JN_Magic_P_use$Patch_ID==JN_Magic_levs_P[i]),]
+  
+  m0_JN_Magic_P <- stan_glmer(Bites_Binomial~Season+(1|Patch_ID),data=JN_Magic_in_P[[i]],cores=4, family = "binomial", iter=10000)
+  
+  # Making predictions for the left out data
+  null_preds_P[[i]] <- posterior_epred(m0_JN_Magic_P,newdata=JN_Magic_out_P[[i]])
+  
+  mPRED_JN_Magic_P <- stan_glmer(Bites_Binomial~Season+Phenolics_Pred_std+(1|Patch_ID),data=JN_Magic_in_P[[i]],cores=4, family = "binomial",iter=10000)
+  
+  pred_preds_P[[i]] <- posterior_epred(mPRED_JN_Magic_P,newdata=JN_Magic_out_P[[i]])
+  
+  mREF_JN_Magic_P <- stan_glmer(Bites_Binomial~Season+Phenolics_Ref_std+(1|Patch_ID),data=JN_Magic_in_P[[i]],cores=4, family = "binomial",iter=10000)
+  
+  ref_preds_P[[i]] <- posterior_epred(mREF_JN_Magic_P,newdata=JN_Magic_out_P[[i]])
+  }
+
+null_preds_t <- t(null_preds_P)
+
+# Extracting the predictions
+# Binding the results together in a single data frame
+JN_Magic_logo_P <- vector("list",4)
+names(JN_Magic_logo_P) <- c("out_data","null","ref","pred")
+JN_Magic_logo_P[[1]] <- do.call("rbind",JN_Magic_out_P)
+JN_Magic_logo_P[[2]] <- t(do.call("cbind",null_preds_P))
+JN_Magic_logo_P[[3]] <- t(do.call("cbind",ref_preds_P))
+JN_Magic_logo_P[[4]] <- t(do.call("cbind",pred_preds_P))
+
+# Save the object 
+save(JN_Magic_logo_P,file="JN_Magic_logo_P.Rdata")
+
+# Load(file="JN_Magic_logo.Rdata")
+str(JN_Magic_logo_P)
+
+# Predicted data
+# These are the predictions from the three models above. These are matrices, because we are doing this in a Bayesian context. 
+null_preds_P <- JN_Magic_logo_P$null
+ref_preds_P <- JN_Magic_logo_P$ref
+pred_preds_P <- JN_Magic_logo_P$pred
+
+# New variable
+JN_Magic_obs_P <- JN_Magic_logo_P$out_data$Bites
+
+# New variable (not sure what this would be in JN_Magic)
+JN_Magic_total_P <- JN_Magic_logo_P$out_data$Bites
+
+# 1 = whether you're doing the mean across rows or columns
+# Trying to predict across patchm, to create something in a list. 
+JN_Magic_null_P <- apply(null_preds_P,1,mean)
+length(JN_Magic_null_P) #382
+JN_Magic_ref_P <- apply(ref_preds_P,1,mean)
+length(JN_Magic_ref_P) #382
+JN_Magic_pred_P <- apply(pred_preds_P,1,mean)
+length(JN_Magic_pred_P) #382
+
+# Likelihood of observed data, given predicted data. We're looking for the lowest number here (this is a call to the probability distribution = how rampant a likely variable is. Given the distribution how likely is it that we observe one value conditional on the probability of being bitten). Remember, we are avoiding over fitting by leaving out data. 
+
+# Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
+mae(JN_Magic_null_P,JN_Magic_obs_P) #Run these for all columns of the posterior estimates of mae, and then apply the 95%CI to this). #1.133652
+mae(JN_Magic_ref_P,JN_Magic_obs_P) #1.1337
+mae(JN_Magic_pred_P, JN_Magic_obs_P) #1.133909
+
+#################Monoterpenes
+
+# In this code, we are creating subsets of the data
+JN_Magic_levs_M <- unique(JN_Magic_M_use$Patch_ID)
+JN_Magic_in_M <- vector("list",length(JN_Magic_levs_M))
+JN_Magic_out_M <- vector("list",length(JN_Magic_levs_M))
+
+# We are testing three different models:
+# Model 1 is the observed chemistry
+# Model 2 is the predicted chemistry
+# Model 3 is a null model with no chemistry
+ref_preds_M <- vector("list",length(JN_Magic_levs_M))
+pred_preds_M <- vector("list",length(JN_Magic_levs_M))
+null_preds_M <- vector("list",length(JN_Magic_levs_M))
+#lists of predictions for each dataset
+
+for(i in 1:length(JN_Magic_levs_M)) #JN_Magic_levs is the unique number of patch ids
+{
+  # For each one of if (!requireNamespace("devtools", quietly = TRUE)){install.packages("devtools")}   devtools::install_github("jbisanz/qiime2R")the patch ids, this is looping through.
+  # If you want to trouble shoot this, put i = 1 into the r consul and run line by line. 
+  # Patch id out, running the model, and predicting on the left out patch
+  
+  # Data use to fit the model
+  JN_Magic_in_M[[i]] <- JN_Magic_M_use[-which(JN_Magic_M_use$Patch_ID==JN_Magic_levs_M[i]),]
+  
+   # Data used to test the model
+  JN_Magic_out_M[[i]] <- JN_Magic_M_use[which(JN_Magic_M_use$Patch_ID==JN_Magic_levs_M[i]),]
+  
+  m0_JN_Magic_M <- stan_glmer(Bites_Binomial~Season+(1|Patch_ID),data=JN_Magic_in_M[[i]],cores=4, family = "binomial", iter=10000)
+  
+  # Making predictions for the left out data
+  null_preds_M[[i]] <- posterior_epred(m0_JN_Magic_M,newdata=JN_Magic_out_M[[i]])
+  
+  mPRED_JN_Magic_M <- stan_glmer(Bites_Binomial~Season+Monoterpenes_Pred_std+(1|Patch_ID),data=JN_Magic_in_M[[i]],cores=4, family = "binomial",iter=10000)
+  
+  pred_preds_M[[i]] <- posterior_epred(mPRED_JN_Magic_M,newdata=JN_Magic_out_M[[i]])
+  
+  mREF_JN_Magic_M <- stan_glmer(Bites_Binomial~Season+Monoterpenes_Ref_std+(1|Patch_ID),data=JN_Magic_in_M[[i]],cores=4, family = "binomial",iter=10000)
+  
+  ref_preds_M[[i]] <- posterior_epred(mREF_JN_Magic_M,newdata=JN_Magic_out_M[[i]])
+  }
+
+null_preds_t <- t(null_preds_M)
+
+# Extracting the predictions
+# Binding the results together in a single data frame
+JN_Magic_logo_M <- vector("list",4)
+names(JN_Magic_logo_M) <- c("out_data","null","ref","pred")
+JN_Magic_logo_M[[1]] <- do.call("rbind",JN_Magic_out_M)
+JN_Magic_logo_M[[2]] <- t(do.call("cbind",null_preds_M))
+JN_Magic_logo_M[[3]] <- t(do.call("cbind",ref_preds_M))
+JN_Magic_logo_M[[4]] <- t(do.call("cbind",pred_preds_M))
+
+# Save the object 
+save(JN_Magic_logo_M,file="JN_Magic_logo_M.Rdata")
+
+# Load(file="JN_Magic_logo.Rdata")
+str(JN_Magic_logo_M)
+
+# Predicted data
+# These are the predictions from the three models above. These are matrices, because we are doing this in a Bayesian context. 
+null_preds_M <- JN_Magic_logo_M$null
+ref_preds_M <- JN_Magic_logo_M$ref
+pred_preds_M <- JN_Magic_logo_M$pred
+
+# New variable
+JN_Magic_obs_M <- JN_Magic_logo_M$out_data$Bites
+
+# New variable (not sure what this would be in JN_Magic)
+JN_Magic_total_M <- JN_Magic_logo_M$out_data$Bites
+
+# 1 = whether you're doing the mean across rows or columns
+# Trying to predict across patchm, to create something in a list. 
+JN_Magic_null_M <- apply(null_preds_M,1,mean)
+length(JN_Magic_null_M) #418
+JN_Magic_ref_M <- apply(ref_preds_M,1,mean)
+length(JN_Magic_ref_M) #418
+JN_Magic_pred_M <- apply(pred_preds_M,1,mean)
+length(JN_Magic_pred_M) #418
+
+# Likelihood of observed data, given predicted data. We're looking for the lowest number here (this is a call to the probability distribution = how rampant a likely variable is. Given the distribution how likely is it that we observe one value conditional on the probability of being bitten). Remember, we are avoiding over fitting by leaving out data. 
+
+# Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
+mae(JN_Magic_null_M,JN_Magic_obs_M) #Run these for all columns of the posterior estimates of mae, and then apply the 95%CI to this). #1.019424
+mae(JN_Magic_ref_M,JN_Magic_obs_M) #1.017725
+mae(JN_Magic_pred_M, JN_Magic_obs_M) #1.017389
+
+#######################CP
+
+# In this code, we are creating subsets of the data
+JN_Magic_levs_CP <- unique(JN_Magic_CP_use$Patch_ID)
+JN_Magic_in_CP <- vector("list",length(JN_Magic_levs_CP))
+JN_Magic_out_CP <- vector("list",length(JN_Magic_levs_CP))
+
+# We are testing three different models:
+# Model 1 is the observed chemistry
+# Model 2 is the predicted chemistry
+# Model 3 is a null model with no chemistry
+ref_preds_CP <- vector("list",length(JN_Magic_levs_CP))
+pred_preds_CP <- vector("list",length(JN_Magic_levs_CP))
+null_preds_CP <- vector("list",length(JN_Magic_levs_CP))
+#lists of predictions for each dataset
+
+for(i in 1:length(JN_Magic_levs_CP)) #JN_Magic_levs is the unique number of patch ids
+{
+  # For each one of if (!requireNamespace("devtools", quietly = TRUE)){install.packages("devtools")}   devtools::install_github("jbisanz/qiime2R")the patch ids, this is looping through.
+  # If you want to trouble shoot this, put i = 1 into the r consul and run line by line. 
+  # Patch id out, running the model, and predicting on the left out patch
+  
+  # Data use to fit the model
+  JN_Magic_in_CP[[i]] <- JN_Magic_CP_use[-which(JN_Magic_CP_use$Patch_ID==JN_Magic_levs_CP[i]),]
+  
+   # Data used to test the model
+  JN_Magic_out_CP[[i]] <- JN_Magic_CP_use[which(JN_Magic_CP_use$Patch_ID==JN_Magic_levs_CP[i]),]
+  
+  m0_JN_Magic_CP <- stan_glmer(Bites_Binomial~Season+(1|Patch_ID),data=JN_Magic_in_CP[[i]],cores=4, family = "binomial", iter=10000)
+  
+  # Making predictions for the left out data
+  null_preds_CP[[i]] <- posterior_epred(m0_JN_Magic_CP,newdata=JN_Magic_out_CP[[i]])
+  
+  mPRED_JN_Magic_CP <- stan_glmer(Bites_Binomial~Season+CP_Pred_std+(1|Patch_ID),data=JN_Magic_in_CP[[i]],cores=4, family = "binomial",iter=10000)
+  
+  pred_preds_CP[[i]] <- posterior_epred(mPRED_JN_Magic_CP,newdata=JN_Magic_out_CP[[i]])
+  
+  mREF_JN_Magic_CP <- stan_glmer(Bites_Binomial~Season+CP_Ref_std+(1|Patch_ID),data=JN_Magic_in_CP[[i]],cores=4, family = "binomial",iter=10000)
+  
+  ref_preds_CP[[i]] <- posterior_epred(mREF_JN_Magic_CP,newdata=JN_Magic_out_CP[[i]])
+  }
+
+null_preds_t_CP <- t(null_preds_CP)
+
+# Extracting the predictions
+# Binding the results together in a single data frame
+JN_Magic_logo_CP <- vector("list",4)
+names(JN_Magic_logo_CP) <- c("out_data","null","ref","pred")
+JN_Magic_logo_CP[[1]] <- do.call("rbind",JN_Magic_out_CP)
+JN_Magic_logo_CP[[2]] <- t(do.call("cbind",null_preds_CP))
+JN_Magic_logo_CP[[3]] <- t(do.call("cbind",ref_preds_CP))
+JN_Magic_logo_CP[[4]] <- t(do.call("cbind",pred_preds_CP))
+
+# Save the object 
+save(JN_Magic_logo_CP,file="JN_Magic_logo_CP.Rdata")
+
+# Load(file="JN_Magic_logo.Rdata")
+str(JN_Magic_logo_CP)
+
+# Predicted data
+# These are the predictions from the three models above. These are matrices, because we are doing this in a Bayesian context. 
+null_preds_CP <- JN_Magic_logo_CP$null
+ref_preds_CP <- JN_Magic_logo_CP$ref
+pred_preds_CP <- JN_Magic_logo_CP$pred
+
+# New variable
+JN_Magic_obs_CP <- JN_Magic_logo_CP$out_data$Bites
+
+# New variable (not sure what this would be in JN_Magic)
+JN_Magic_total_CP <- JN_Magic_logo_CP$out_data$Bites
+
+# 1 = whether you're doing the mean across rows or columns
+# Trying to predict across patchm, to create something in a list. 
+JN_Magic_null_CP <-apply(null_preds_CP,1,mean)
+length(JN_Magic_null_CP) #426
+JN_Magic_ref_CP <-apply(ref_preds_CP,1,mean)
+length(JN_Magic_ref_CP) #426
+JN_Magic_pred_CP <-apply(pred_preds_CP,1,mean)
+length(JN_Magic_pred_CP) #426
+
+# Likelihood of observed data, given predicted data. We're looking for the lowest number here (this is a call to the probability distribution = how rampant a likely variable is. Given the distribution how likely is it that we observe one value conditional on the probability of being bitten). Remember, we are avoiding over fitting by leaving out data. 
+
+# Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
+mae(JN_Magic_null_CP,JN_Magic_obs_CP) #Run these for all columns of the posterior estimates of mae, and then apply the 95%CI to this). #1.000369
+mae(JN_Magic_ref_CP,JN_Magic_obs_CP) #1.017181
+mae(JN_Magic_pred_CP, JN_Magic_obs_CP) #1.087752
+```
+
+# General posterior draw descriptive statistics
+
+```{r}
+
+nameo <- list.files()[-1]
+
+chem_range <- read.csv("Text_Chemistry_Mins_Max_16Nov2025.csv")
+
+load("mREF_JN_Magic_single_P.Rdata")
+load("mPRED_JN_Magic_single_P.Rdata")
+load("mREF_JN_Magic_single_M.Rdata")
+load("mPRED_JN_Magic_single_M.Rdata")
+load("mREF_JN_Magic_single_CP.Rdata")
+load("mPRED_JN_Magic_single_CP.Rdata")
+
+#All chemicals
+chemm <- read.csv("Text_Chemistry_Mins_Max_16Nov2025.csv")
+
+#First we will pull out the posterior draws:
+#Phenolics
+ref_JN_posteriors_P <- data.frame(mREF_JN_Magic_single_P)
+pred_JN_posteriors_P <- data.frame(mPRED_JN_Magic_single_P)
+
+#Monoterpenes
+ref_JN_posteriors_M <- data.frame(mREF_JN_Magic_single_M)
+pred_JN_posteriors_M <- data.frame(mPRED_JN_Magic_single_M)
+
+#CP
+ref_JN_posteriors_CP <- data.frame(mREF_JN_Magic_single_CP)
+pred_JN_posteriors_CP <- data.frame(mPRED_JN_Magic_single_CP)
+
+dim(ref_JN_posteriors_P) #20000    53
+dim(pred_JN_posteriors_P) #20000    53
+dim(ref_JN_posteriors_M) #20000    53
+dim(pred_JN_posteriors_M) #20000    53
+dim(ref_JN_posteriors_CP) #20000    53
+dim(pred_JN_posteriors_CP) #20000    53
+
+```
+
+# Probability of Direction - Reference Chemistry
+
+What is the percentage of draws that are either positive of negative?
+
+```{r}
+# Phenolics
+length(which(ref_JN_posteriors_P$Phenolics_Ref_std>0))/length(ref_JN_posteriors_P$Phenolics_Ref_std) #0.89445
+length(which(ref_JN_posteriors_P$Phenolics_Ref_std<0))/length(ref_JN_posteriors_P$Phenolics_Ref_std) #0.10555
+
+# Monoterpenes
+length(which(ref_JN_posteriors_M$Monoterpenes_Ref_std>0))/length(ref_JN_posteriors_M$Monoterpenes_Ref_std) #0.9777
+length(which(ref_JN_posteriors_M$Monoterpenes_Ref_std<0))/length(ref_JN_posteriors_M$Monoterpenes_Ref_std) #0.0223
+
+# Crude Proteins
+length(which(ref_JN_posteriors_CP$CP_Ref_std>0))/length(ref_JN_posteriors_CP$CP_Ref_std) #1
+length(which(ref_JN_posteriors_CP$CP_Ref_std<0))/length(ref_JN_posteriors_CP$CP_Ref_std) #0
+
+```
+
+# Probability of Direction - Predicted Chemistry
+
+What is the percentage of draws that are either positive of negative?
+
+```{r}
+
+# Phenolics
+length(which(pred_JN_posteriors_P$Phenolics_Pred_std>0))/length(pred_JN_posteriors_P$Phenolics_Pred_std) #0.9381
+length(which(pred_JN_posteriors_P$Phenolics_Pred_std<0))/length(pred_JN_posteriors_P$Phenolics_Pred_std) #0.06305
+
+# Monoterpenes
+length(which(pred_JN_posteriors_M$Monoterpenes_Pred_std>0))/length(pred_JN_posteriors_M$Monoterpenes_Pred_std) #0.96275
+length(which(pred_JN_posteriors_M$Monoterpenes_Pred_std<0))/length(pred_JN_posteriors_M$Monoterpenes_Pred_std) #0.03725
+
+# Crude Proteins
+length(which(pred_JN_posteriors_CP$CP_Pred_std>0))/length(pred_JN_posteriors_CP$CP_Pred_std) #1
+length(which(pred_JN_posteriors_CP$CP_Pred_std<0))/length(pred_JN_posteriors_CP$CP_Pred_std) #0
+
+```
+
+# Effect Size Min & Max - Reference chemistry
+
+```{r}
+
+# Referencing min and max from data frame
+chemm$Ref_Min[which(chemm$Site=="JN_Magic" & chemm$Chemical=="Crude Protein")] 
+chemm$Ref_Max[which(chemm$Site=="JN_Magic" & chemm$Chemical=="Crude Protein")] 
+
+# Setting up an empty vector to fill in with predictions
+predicted_diff_cp_ref <- rep(NA,times=ncol(ref_JN_posteriors_CP))
+predicted_diff_Monoterpenes_ref <- rep(NA,times=ncol(ref_JN_posteriors_M))
+predicted_diff_Phenolics_ref <- rep(NA,times=ncol(ref_JN_posteriors_P))
+
+# Phenolics
+for(i in 1:ncol(ref_JN_posteriors_P)){
+
+# This is just an intercept + slope*x. exp ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_P <- exp(ref_JN_posteriors_P$X.Intercept.[i]+ref_JN_posteriors_P$Phenolics_Ref_std[i]*chemm$Ref_Min[which(chemm$Site=="JN_Magic" & chemm$Chemical=="Phenolics")])
+  
+max_pred_P <- exp(ref_JN_posteriors_P$X.Intercept.[i]+ref_JN_posteriors_P$Phenolics_Ref_std[i]*chemm$Ref_Max[which(chemm$Site=="JN_Magic" & chemm$Chemical=="Phenolics")])
+  
+predicted_diff_Phenolics_ref[i] <- max_pred_P-min_pred_P # This is the difference we will store. feel free to reverse the order here, depending on what you want to report.
+}  
+
+quantile(predicted_diff_Phenolics_ref,c(0.025,0.5,0.975))
+#       2.5%         50%       97.5% 
+#-0.01835510  0.08762001  1.12895019 
+
+
+# Monoterpenes
+for(i in 1:ncol(ref_JN_posteriors_M)){
+
+# This is just an intercept + slope*x. plogis ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_M <- plogis(ref_JN_posteriors_M$X.Intercept.[i]+ref_JN_posteriors_M$Monoterpenes_Ref_std[i]*chemm$Ref_Min[which(chemm$Site=="JN_Magic" & chemm$Chemical=="Monoterpenes")])
+  
+max_pred_M <- plogis(ref_JN_posteriors_M$X.Intercept.[i]+ref_JN_posteriors_M$Monoterpenes_Ref_std[i]*chemm$Ref_Max[which(chemm$Site=="JN_Magic" & chemm$Chemical=="Monoterpenes")])
+  
+predicted_diff_Monoterpenes_ref[i] <- max_pred_M-min_pred_M # This is the difference we will store.
+}  
+
+quantile(predicted_diff_Monoterpenes_ref,c(0.025,0.5,0.975)) 
+#       2.5%          50%        97.5% 
+#0.004518973 0.100605431 0.339281279
+
+# CP
+
+for(i in 1:ncol(ref_JN_posteriors_CP)){
+
+# This is just an intercept + slope*x. plogis ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_CP <- plogis(ref_JN_posteriors_CP$X.Intercept.[i]+ref_JN_posteriors_CP$CP_Ref_std[i]*chemm$Ref_Min[which(chemm$Site=="JN_Magic" & chemm$Chemical=="Crude Protein")])
+  
+max_pred_CP <- plogis(ref_JN_posteriors_CP$X.Intercept.[i]+ref_JN_posteriors_CP$CP_Ref_std[i]*chemm$Ref_Max[which(chemm$Site=="JN_Magic" & chemm$Chemical=="Crude Protein")])
+  
+predicted_diff_cp_ref[i] <- max_pred_CP-min_pred_CP # This is the difference we will store. 
+  }  
+
+quantile(predicted_diff_cp_ref,c(0.025,0.5,0.975)) 
+
+#      2.5%        50%      97.5% 
+#0.02837297 0.18236810 0.57020162 
+
+
+```
+
+# Effect Size Min & Max - Predicted Chemistry
+
+```{r}
+
+# Referencing min and max from data frame
+chemm$Pred_Min[which(chemm$Site=="JN_Magic" & chemm$Chemical=="Crude Protein")] 
+chemm$Pred_Max[which(chemm$Site=="JN_Magic" & chemm$Chemical=="Crude Protein")] 
+
+# Setting up an empty vector to fill in with predictions
+predicted_diff_Phenolics_pred <- rep(NA,times=ncol(pred_JN_posteriors_P))
+predicted_diff_Monoterpenes_pred <- rep(NA,times=ncol(pred_JN_posteriors_M))
+predicted_diff_cp_pred <- rep(NA,times=ncol(pred_JN_posteriors_CP))
+
+# Phenolics
+for(i in 1:ncol(pred_JN_posteriors_P)){
+
+# This is just an intercept + slope*x. plogis ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_P <- plogis(pred_JN_posteriors_P$X.Intercept.[i]+pred_JN_posteriors_P$Phenolics_Pred_std[i]*chemm$Pred_Min[which(chemm$Site=="JN_Magic" & chemm$Chemical=="Phenolics")])
+  
+max_pred_P <- plogis(pred_JN_posteriors_P$X.Intercept.[i]+pred_JN_posteriors_P$Phenolics_Pred_std[i]*chemm$Pred_Max[which(chemm$Site=="JN_Magic" & chemm$Chemical=="Phenolics")])
+  
+predicted_diff_Phenolics_pred[i] <- max_pred_P-min_pred_P # This is the difference we will store. 
+}  
+
+quantile(predicted_diff_Phenolics_pred,c(0.025,0.5,0.975)) 
+#        2.5%          50%        97.5% 
+#-0.02559411  0.04017733  0.16882918 
+
+# Monoterpenes
+for(i in 1:ncol(pred_JN_posteriors_M)){
+
+# This is just an intercept + slope*x. plogis ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_M <- plogis(pred_JN_posteriors_M$X.Intercept.[i]+pred_JN_posteriors_M$Monoterpenes_Pred_std[i]*chemm$Pred_Min[which(chemm$Site=="JN_Magic" & chemm$Chemical=="Monoterpenes")])
+  
+max_pred_M <- plogis(pred_JN_posteriors_M$X.Intercept.[i]+pred_JN_posteriors_M$Monoterpenes_Pred_std[i]*chemm$Pred_Max[which(chemm$Site=="JN_Magic" & chemm$Chemical=="Monoterpenes")])
+  
+predicted_diff_Monoterpenes_pred[i] <- max_pred_M-min_pred_M # This is the difference we will store. 
+}  
+
+quantile(predicted_diff_Monoterpenes_pred,c(0.025,0.5,0.975)) 
+#      2.5%        50%      97.5% 
+#-0.009440813  0.035605060  0.094180903 
+
+# CP
+for(i in 1:ncol(pred_JN_posteriors_CP)){
+
+# This is just an intercept + slope*x. plogis ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_CP <- plogis(pred_JN_posteriors_CP$X.Intercept.[i]+pred_JN_posteriors_CP$CP_Pred_std[i]*chemm$Pred_Min[which(chemm$Site=="JN_Magic" & chemm$Chemical=="Crude Protein")])
+  
+max_pred_CP <- plogis(pred_JN_posteriors_CP$X.Intercept.[i]+pred_JN_posteriors_CP$CP_Pred_std[i]*chemm$Pred_Max[which(chemm$Site=="JN_Magic" & chemm$Chemical=="Crude Protein")])
+  
+predicted_diff_cp_pred[i] <- max_pred_CP-min_pred_CP # This is the difference we will store.
+  }  
+
+quantile(predicted_diff_cp_pred,c(0.025,0.5,0.975)) 
+#     2.5%       50%     97.5% 
+#0.1201562 0.3433512 0.6886870 
+
+```

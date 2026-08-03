@@ -1,0 +1,835 @@
+---
+title: "Chapter 2 - Bite Data - chemmistry - Predicted chemmistry at Cedar Gulch"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+This R Markdown file will input data for the Cedar Gulch (JN Gulch = Leadore = Lemhi = Cedar Gulch) site and prepare it for three downstream analyses determining the effects of chemistry and predicted chemistry on bite data. 
+
+Cedar Gulch is a pygmy rabbit site that underwent stratified random collection of data, with 3-6 plants sampled per patch and patches randomly selected within distance strata for dist to burrow (0-20m; 20-40m; 40-100m). While data points include a combination of individual plants and pooled samples, only the individual plant samples were used. Data was collected in Summer and Winter, and had no upper limit for the number of bites counted. A negative binomial distribution was used to analyze this data set.
+
+In addition to these data, individual pellet counts within a meter of each individual shrub.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("~/GLMM_Robb_Chapter2/Cedar_June2026")
+#Load libraries
+library("rprojroot")
+library("loo")
+library("rstanarm")
+options(mc.cores = parallel::detectCores())
+library("ggplot2")
+library("bayesplot")
+theme_set(bayesplot::theme_default(base_family = "sans"))
+library("MASS")
+library("lme4")
+library("brms")
+library("rstanarm")
+```
+
+# Functions
+
+These functions are used throughout the markdown, and include ways for evaluating predictive error and standardizing the inputs. 
+
+## Root mean square error (RSME)
+This shows the difference between an estimator and the values observed, and provides a measure of accuracy.
+
+## Mean absolute error (MAE)
+This is a measure of errors between paired observations expressing the same phenomenon, and is one of a number of ways of comparing forecasts with their eventual outcomes.
+
+## Residual sum of squares (RSS)
+This is a measure of discrepancy between the data (x) and the model (d). A small value indicates a good fit between the data and the model (0 is a perfect fit). This number can be infinite, as far as I'm aware.
+
+## Total sum of squares (TSS)
+
+This is the explained sum of squares plus the RSS. 
+
+## R2
+
+The proportion of variance explained by the model out of the total variance in the data (0-1). Closer to one means 100% fit. 
+
+## splt
+
+Tidies up the data by removing the double names
+
+## stdize
+
+Putting all of the covariates on the same scale 
+http://www.stat.columbia.edu/~gelman/research/published/standardizing7.pdf
+
+
+```{r}
+# This first function is for root mean square, where m is the model predictions, and x is the data.
+rmse <- function(m,x) 
+{
+  sqrt(mean((x-m)^2,na.rm=T))
+}
+
+# This function is for mean absolute error, where m is the model predictions, and x is the data. 
+mae <- function(m,x)
+{
+  mean(abs(((x-m))),na.rm=T)
+}
+
+# This function is for residual sum of squares
+RSS <- function(m,x) 
+{
+  sum((((m))-(x))^2)
+}
+
+# This function is for total sum of squares
+TSS <- function(x) 
+{
+  sum(((x)-(mean(x)))^2)
+  }
+
+R2<-function(m,x,logo=F) {
+  mors<-na.omit(data.frame(m,x))
+  m<-mors$m
+  x<-mors$x
+  
+  if(logo==F) {return(1-RSS(m,x)/TSS(x))} else {return(1-RSS1(m,x)/TSS1(x))}
+}
+
+# Split names
+splt=function(x,split,num) {
+  
+  x<-as.character(x)
+  p1=strsplit(x,split=split,fixed=T)
+  p2=unlist(lapply(p1,"[",num))
+  return(p2)
+}
+
+# Standardize covariates
+stdize<-function(x) {(x-mean(x,na.rm=T))/(2*sd(x,na.rm=T))}
+
+```
+
+# Read in Files
+
+Time to read in all those bite files! 
+
+In Brecken's bite file (BB) for the Cedar Gulch site, you'll see that the number of bites are taken from individual plants, but the data for compilation (e.g., pooled) sites exists. Here, we are only taking information from individual plants. 
+
+```{r}
+#Main data set that includes all the sites, chemotype levels. We're setting periods and blank spaces to read in to R as NA:
+Phenolics <- read.csv("Phenolics.csv", na.strings=c("."," ","","NA"))
+Monoterpenes <- read.csv("Monoterpenes.csv", na.strings=c("."," ","","NA"))
+Crude_Protein <- read.csv("Crude_protein.csv", na.strings=c("."," ","","NA"))
+
+# Subset datasets to Craters sites:
+Cedar_P <-subset(Phenolics,Phenolics$Site=="Cedar Gulch") 
+Cedar_M <-subset(Monoterpenes, Monoterpenes$Site=="Cedar Gulch") 
+Cedar_CP <-subset(Crude_Protein,Crude_Protein$Site=="Cedar Gulch") 
+
+# See the distribution of number of bites. You'll see there is no averaged data here. 
+unique(Cedar_P$Bites)
+unique(Cedar_M$Bites)
+unique(Cedar_CP$Bites)
+
+## Check out the dimensions of the input data:
+# Bites
+length(Cedar_P$Bites) #602
+table(Cedar_P$Bites)
+
+length(Cedar_M$Bites) #625
+table(Cedar_M$Bites)
+
+length(Cedar_CP$Bites) #619
+table(Cedar_CP$Bites)
+
+# Season
+table(Cedar_P$Season) #summer: 224 winter: 378
+table(Cedar_M$Season) #summer: 238 winter: 387
+table(Cedar_CP$Season) #summer: 236 winter: 383
+
+# Species
+table(Cedar_P$Species) #dwarf:95 dwarf_comp: 46 nova:23 wyo_comp:111 wyoming:327
+table(Cedar_M$Species) #dwarf:100 dwarf_comp: 48 nova:25 wyo_comp:116 wyoming:336
+table(Cedar_CP$Species) #dwarf:98 dwarf_comp: 47 nova:25 wyo_comp:116 wyoming:333
+
+# Plant height # Not available at this site
+table(Cedar_P$PlantSize) #< table of extent 0 >
+table(Cedar_M$PlantSize) #< table of extent 0 >
+table(Cedar_CP$PlantSize) #< table of extent 0 >
+
+# Patch type
+table(Cedar_P$PatchType) #dwarf:200 off:211 on:191 
+table(Cedar_M$PatchType) #dwarf:210 off:216 on:199
+table(Cedar_CP$PatchType) #dwarf:207 off:214 on:198
+
+# Patch ID
+table(Cedar_P$Patch_ID)
+table(Cedar_M$Patch_ID)
+table(Cedar_CP$Patch_ID)
+
+#Patch_ID here is the random effect
+table(Cedar_P$Patch_ID)[-which(table(Cedar_P$Patch_ID)==0)] #named integer(0)
+table(Cedar_M$Patch_ID)[-which(table(Cedar_M$Patch_ID)==0)] #named integer(0)
+table(Cedar_CP$Patch_ID)[-which(table(Cedar_CP$Patch_ID)==0)] #named integer(0)
+
+# Standardize our covariates
+Cedar_P$Phenolics_Pred_std<-stdize(Cedar_P$Phenolics_newpred)
+Cedar_M$Monoterpenes_Pred_std<-stdize(Cedar_M$Monoterpenes_newpred)
+Cedar_CP$CP_Pred_std<-stdize(Cedar_CP$CP_newpred)
+
+Cedar_P$Phenolics_Ref_std<-stdize(Cedar_P$Phenolics_Ref)
+Cedar_M$Monoterpenes_Ref_std<-stdize(Cedar_M$Monoterpenes_Ref)
+Cedar_CP$CP_Ref_std<-stdize(Cedar_CP$CP_Ref)
+
+Cedar_P$Patch_ID<-droplevels(as.factor(paste("p",Cedar_P$Patch_ID.x,sep="_")))
+Cedar_M$Patch_ID<-droplevels(as.factor(paste("p",Cedar_M$Patch_ID.x,sep="_")))
+Cedar_CP$Patch_ID<-droplevels(as.factor(paste("p",Cedar_CP$Patch_ID.x,sep="_")))
+
+# Create the data set that we use moving forward
+Cedar_use_P <- na.omit(data.frame(Bites=Cedar_P$Bites,PatchType=Cedar_P$PatchType,Season=Cedar_P$Season,Phenolics_Pred_std=Cedar_P$Phenolics_Pred_std,Patch_ID=Cedar_P$Final_patch,Phenolics_Ref_std=Cedar_P$Phenolics_Ref_std))
+
+Cedar_use_M <- na.omit(data.frame(Bites=Cedar_M$Bites,PatchType=Cedar_M$PatchType,Season=Cedar_M$Season,Monoterpenes_Pred_std=Cedar_M$Monoterpenes_Pred_std,Patch_ID=Cedar_M$Final_patch,Monoterpenes_Ref_std=Cedar_M$Monoterpenes_Ref_std))
+
+Cedar_use_CP <- na.omit(data.frame(Bites=Cedar_CP$Bites,CP_Pred_std=Cedar_CP$CP_Pred_std,PatchType=Cedar_CP$PatchType,Season=Cedar_CP$Season,Patch_ID=Cedar_CP$Final_patch,CP_Ref_std=Cedar_CP$CP_Ref_std))
+
+#If bites >0, then 1. If not, 0 (creating a binomial distribution)
+Cedar_use_P$Bites_Binomial <- ifelse(Cedar_use_P$Bites > 0, 1, 0)
+Cedar_use_M$Bites_Binomial <- ifelse(Cedar_use_M$Bites > 0, 1, 0)
+Cedar_use_CP$Bites_Binomial <- ifelse(Cedar_use_CP$Bites > 0, 1, 0)
+
+## Check out the dimensions of the final data:
+# Bites
+length(Cedar_use_P$Bites_Binomial) #411
+table(Cedar_use_P$Bites_Binomial)
+
+length(Cedar_use_M$Bites_Binomial) #427
+table(Cedar_use_M$Bites_Binomial)
+
+length(Cedar_use_CP$Bites_Binomial) #422
+table(Cedar_use_CP$Bites_Binomial)
+
+# Season
+table(Cedar_use_P$Season) #summer:162 winter:249
+table(Cedar_use_M$Season) #summer:172 winter:255
+table(Cedar_use_CP$Season) #summer:170 winter:252
+
+# Patch type
+table(Cedar_use_P$PatchType) #dwarf:148 off:135 on:128
+table(Cedar_use_M$PatchType) #dwarf:155 off:140 on:132
+table(Cedar_use_CP$PatchType) #dwarf:153 off:138 on:131
+
+#Mins and Maxes
+min(Cedar_use_P$Phenolics_Ref_std) #-1.149669
+max(Cedar_use_P$Phenolics_Ref_std) #2.276075
+min(Cedar_use_P$Phenolics_Pred_std) #-1.570639
+max(Cedar_use_P$Phenolics_Pred_std) #2.439718
+
+min(Cedar_use_M$Monoterpenes_Ref_std) #-1.030399
+max(Cedar_use_M$Monoterpenes_Ref_std) #4.339147
+min(Cedar_use_M$Monoterpenes_Pred_std) #-2.720693
+max(Cedar_use_M$Monoterpenes_Pred_std) #1.660058
+
+min(Cedar_use_CP$CP_Ref_std) #-1.363473
+max(Cedar_use_CP$CP_Ref_std) #2.138242
+min(Cedar_use_CP$CP_Pred_std) #-1.565088
+max(Cedar_use_CP$CP_Pred_std) #2.316108
+
+## Descriptive Stats
+
+# Phenolics
+mean(Cedar_P$Phenolics_Ref, na.rm=TRUE) #10.90597
+sd(Cedar_P$Phenolics_Ref, na.rm=TRUE) #3.990679
+mean(Cedar_P$Phenolics_newpred, na.rm=TRUE) #11.18504
+sd(Cedar_P$Phenolics_newpred, na.rm=TRUE) #6.97839
+
+mean(Cedar_use_P$Phenolics_Ref_std, na.rm=TRUE) #-0.04535968
+sd(Cedar_use_P$Phenolics_Ref_std, na.rm=TRUE) #0.4915738
+mean(Cedar_use_P$Phenolics_Pred_std, na.rm=TRUE) #-0.03606756
+sd(Cedar_use_P$Phenolics_Pred_std, na.rm=TRUE) #0.4897037
+
+# Monoterpenes
+mean(Cedar_M$Monoterpenes_Ref, na.rm=TRUE) #410.205
+sd(Cedar_M$Monoterpenes_Ref, na.rm=TRUE) #177.6744
+mean(Cedar_M$Monoterpenes_newpred, na.rm=TRUE) #412.8084
+sd(Cedar_M$Monoterpenes_newpred, na.rm=TRUE) #242.3874
+
+mean(Cedar_use_M$Monoterpenes_Ref_std, na.rm=TRUE) #-0.0332545
+sd(Cedar_use_M$Monoterpenes_Ref_std, na.rm=TRUE) #0.5191545
+mean(Cedar_use_M$Monoterpenes_Pred_std, na.rm=TRUE) #-0.03276188
+sd(Cedar_use_M$Monoterpenes_Pred_std, na.rm=TRUE) #0.491123
+
+# Crude Proteins
+
+mean(Cedar_CP$CP_Ref, na.rm=TRUE) #13.37866
+sd(Cedar_CP$CP_Ref, na.rm=TRUE) #1.899069
+mean(Cedar_CP$CP_newpred, na.rm=TRUE) #13.36841
+sd(Cedar_CP$CP_newpred, na.rm=TRUE) #1.62548
+
+mean(Cedar_use_CP$CP_Ref_std, na.rm=TRUE) #-0.003047234
+sd(Cedar_use_CP$CP_Ref_std, na.rm=TRUE) #0.5379341
+mean(Cedar_use_CP$CP_Pred_std, na.rm=TRUE) #0.0004147949
+sd(Cedar_use_CP$CP_Pred_std, na.rm=TRUE) #0.5327925
+
+```
+
+# Question 1: what are the effects of chemmistry on bites?
+
+```{r}
+
+mREF_Cedar_single_P <-rstanarm::stan_glmer(Bites_Binomial~Season+Phenolics_Ref_std+(1|Patch_ID),data=Cedar_use_P,cores=4, family = "binomial",iter=10000)
+
+mREF_Cedar_single_M <-rstanarm::stan_glmer(Bites_Binomial~Season+Monoterpenes_Ref_std+(1|Patch_ID),data=Cedar_use_M,cores=4, family = "binomial",iter=10000)
+
+mREF_Cedar_single_CP <-rstanarm::stan_glmer(Bites_Binomial~Season+CP_Ref_std+(1|Patch_ID),data=Cedar_use_CP,cores=4, family = "binomial",iter=10000)
+
+png(file="./Cedar_Gulch_Reference_P.png")
+summary(mREF_Cedar_single_P)
+plot(mREF_Cedar_single_P,regex_pars="_std")
+save(mREF_Cedar_single_P, file = "mREF_Cedar_single_P.Rdata")
+
+png(file="./Cedar_Gulch_Reference_M.png")
+summary(mREF_Cedar_single_M)
+plot(mREF_Cedar_single_M,regex_pars="_std")
+save(mREF_Cedar_single_M, file = "mREF_Cedar_single_M.Rdata")
+
+png(file="./Cedar_Gulch_Reference_CP.png")
+summary(mREF_Cedar_single_CP)
+plot(mREF_Cedar_single_CP,regex_pars="_std")
+save(mREF_Cedar_single_CP, file = "mREF_Cedar_single_CP.Rdata")
+
+##############
+# Extract posteriors
+
+Cedar_single_REF_P <- as.data.frame(mREF_Cedar_single_P)
+Cedar_single_REF_M <- as.data.frame(mREF_Cedar_single_M)
+Cedar_single_REF_CP <- as.data.frame(mREF_Cedar_single_CP)
+
+Phenolics_out <- Cedar_single_REF_P$Phenolics_Ref_std
+Phenolics_REF_cat <- rep("Phenolics_REF",times=length(Phenolics_out))
+
+Monoterpenes_out <- Cedar_single_REF_M$Monoterpenes_Ref_std
+Monoterpenes_REF_cat <- rep("Monoterpenes_REF",times=length(Monoterpenes_out))
+
+CP_out <- Cedar_single_REF_CP$CP_Ref_std
+CP_REF_cat <- rep("CP_REF",times=length(CP_out))
+
+pos_draws <- c(Phenolics_out,CP_out,Monoterpenes_out)
+
+chemm_type <- c(Phenolics_REF_cat,CP_REF_cat,Monoterpenes_REF_cat)
+
+Cedar_single_REF <- data.frame(pos_draws,chemm_type)
+
+Cedar_single_REF$Site<-rep("Cedar",times=nrow(Cedar_single_REF))
+
+save(Cedar_single_REF ,file="Cedar_single_REF.Rdata")
+
+```
+
+# Question 2: does inference on chemmistry effects change when using predicted, rather than observed values?
+
+```{r}
+
+mPRED_Cedar_single_P <-rstanarm::stan_glmer(Bites_Binomial~Season+Phenolics_Pred_std+(1|Patch_ID),data=Cedar_use_P,cores=4, family = "binomial",iter=10000)
+
+mPRED_Cedar_single_M <-rstanarm::stan_glmer(Bites_Binomial~Season+Monoterpenes_Pred_std+(1|Patch_ID),data=Cedar_use_M,cores=4, family = "binomial",iter=10000)
+
+mPRED_Cedar_single_CP <-rstanarm::stan_glmer(Bites_Binomial~Season+CP_Pred_std+(1|Patch_ID),data=Cedar_use_CP,cores=4, family = "binomial",iter=10000)
+
+png(file="./Cedar_Pred_P.png")
+summary(mPRED_Cedar_single_P)
+plot(mPRED_Cedar_single_P,regex_pars="_std")
+dev.off()
+save(mPRED_Cedar_single_P, file = "mPRED_Cedar_single_P.Rdata")
+
+png(file="./Cedar_Pred_M.png")
+summary(mPRED_Cedar_single_M)
+plot(mPRED_Cedar_single_M,regex_pars="_std")
+dev.off()
+save(mPRED_Cedar_single_M, file = "mPRED_Cedar_single_M.Rdata")
+
+png(file="./Cedar_Pred_CP.png")
+summary(mPRED_Cedar_single_CP)
+plot(mPRED_Cedar_single_CP,regex_pars="_std")
+dev.off()
+save(mPRED_Cedar_single_CP, file = "mPRED_Cedar_single_CP.Rdata")
+
+##############
+# Extract posteriors
+
+Cedar_single_PRED_P <- as.data.frame(mPRED_Cedar_single_P)
+Cedar_single_PRED_M <- as.data.frame(mPRED_Cedar_single_M)
+Cedar_single_PRED_CP <- as.data.frame(mPRED_Cedar_single_CP)
+
+Phenolics_out <- Cedar_single_PRED_P$Phenolics_Pred_std
+Phenolics_PRED_cat <- rep("Phenolics_PRED",times=length(Phenolics_out))
+
+Monoterpenes_out <- Cedar_single_PRED_M$Monoterpenes_Pred_std
+Monoterpenes_PRED_cat <- rep("Monoterpenes_PRED",times=length(Monoterpenes_out))
+
+CP_out <- Cedar_single_PRED_CP$CP_Pred_std
+CP_PRED_cat <- rep("CP_PRED",times=length(CP_out))
+
+pos_draws <- c(Phenolics_out,CP_out,Monoterpenes_out)
+
+chemm_type <- c(Phenolics_PRED_cat,CP_PRED_cat,Monoterpenes_PRED_cat)
+
+Cedar_single_PRED <- data.frame(pos_draws,chemm_type)
+
+Cedar_single_PRED$Site<-rep("Cedar",times=nrow(Cedar_single_PRED))
+
+save(Cedar_single_PRED ,file="Cedar_single_PRED.Rdata")
+
+```
+
+# Question 3: how does the predictions changes when using obs vs predicted chemmistry?
+
+# https://onlinelibrary.wiley.com/doi/full/10.1111/ecog.02881
+#paper that describes our leave-one-out approach
+
+```{r}
+##Phenolics
+
+# In this code, we are creating subsets of the data
+Cedar_levs_P <- unique(Cedar_use_P$Patch_ID)
+Cedar_in_P <- vector("list",length(Cedar_levs_P))
+Cedar_out_P <- vector("list",length(Cedar_levs_P))
+
+# We are testing three different models:
+# Model 1 is the observed chemmistry
+# Model 2 is the predicted chemmistry
+# Model 3 is a null model with no chemmistry
+ref_preds_P <- vector("list",length(Cedar_levs_P))
+pred_preds_P <- vector("list",length(Cedar_levs_P))
+null_preds_P <- vector("list",length(Cedar_levs_P))
+
+for(i in 1:length(Cedar_levs_P)) #Cedar_levs is the unique number of patch ids
+{
+  # For each one of if (!requireNamespace("devtools", quietly = TRUE)){install.packages("devtools")} devtools::install_github("jbisanz/qiime2R")the patch ids, this is looping through. If you want to trouble shoot this, put i = 1 into the r consul and run line by line. Patch id out, running the model, and predicting on the left out patch
+  
+  # Data use to fit the model
+  Cedar_in_P[[i]]<-Cedar_use_P[-which(Cedar_use_P$Patch_ID==Cedar_levs_P[i]),]
+  
+  # Data used to test the model
+  Cedar_out_P[[i]]<-Cedar_use_P[which(Cedar_use_P$Patch_ID==Cedar_levs_P[i]),]
+  
+  m0_Cedar_P<-stan_glmer(Bites_Binomial~Season+(1|Patch_ID),data=Cedar_in_P[[i]],cores=4, family = "binomial",iter=10000)
+  
+  # Making predictions for the left out data
+  null_preds_P[[i]]=posterior_epred(m0_Cedar_P,newdata=Cedar_out_P[[i]])
+  
+  mPRED_Cedar_P<-stan_glmer(Bites_Binomial~Season+Phenolics_Pred_std+(1|Patch_ID),data=Cedar_in_P[[i]],cores=4, family = "binomial",iter=10000)
+  
+  pred_preds_P[[i]]=posterior_epred(mPRED_Cedar_P,newdata=Cedar_out_P[[i]])
+  
+  mREF_Cedar_P<-stan_glmer(Bites_Binomial~Season+Phenolics_Ref_std+(1|Patch_ID),data=Cedar_in_P[[i]],cores=4, family = "binomial",iter=10000)
+  
+  ref_preds_P[[i]]<-posterior_epred(mREF_Cedar_P,newdata=Cedar_out_P[[i]])
+  }
+
+null_preds_t_P<-t(null_preds_P)
+
+# Extracting the predictions
+# Binding the results together in a single data frame
+Cedar_logo_P<-vector("list",4)
+names(Cedar_logo_P)<-c("out_data","null","ref","pred")
+Cedar_logo_P[[1]]<-do.call("rbind",Cedar_out_P)
+Cedar_logo_P[[2]]<-t(do.call("cbind",null_preds_P))
+Cedar_logo_P[[3]]<-t(do.call("cbind",ref_preds_P))
+Cedar_logo_P[[4]]<-t(do.call("cbind",pred_preds_P))
+
+# Save the object 
+save(Cedar_logo_P,file="Cedar_logo_P.Rdata")
+
+# Load(file="Cedar_logo.Rdata")
+str(Cedar_logo_P)
+
+# Predicted data
+# These are the predictions from the three models above. These are matrices, because we are doing this in a Bayesian context. 
+null_preds_P <- Cedar_logo_P$null
+ref_preds_P <- Cedar_logo_P$ref
+pred_preds_P <- Cedar_logo_P$pred
+
+# New variable
+Cedar_obs_P <- Cedar_logo_P$out_data$Bites
+
+# New variable (not sure what this would be in KG_Magic)
+Cedar_total_P <- Cedar_logo_P$out_data$Bites
+
+# 1 = whether you're doing the mean across rows or columns
+# Trying to predict across patchm, to create something in a list. 
+Cedar_null_P <- apply(null_preds_P,1,mean)
+length(Cedar_null_P) #411
+Cedar_ref_P <- apply(ref_preds_P,1,mean)
+length(Cedar_ref_P) #411
+Cedar_pred_P <- apply(pred_preds_P,1,mean)
+length(Cedar_pred_P) #411
+
+# Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
+mae(Cedar_null_P,Cedar_obs_P) #2.266539
+mae(Cedar_ref_P,Cedar_obs_P) #2.266739
+mae(Cedar_pred_P, Cedar_obs_P) #2.266489
+
+##Monoterpenes
+
+# In this code, we are creating subsets of the data
+Cedar_levs_M <- unique(Cedar_use_M$Patch_ID)
+Cedar_in_M <- vector("list",length(Cedar_levs_M))
+Cedar_out_M <- vector("list",length(Cedar_levs_M))
+
+# We are testing three different models:
+# Model 1 is the observed chemmistry
+# Model 2 is the predicted chemmistry
+# Model 3 is a null model with no chemmistry
+ref_preds_M <- vector("list",length(Cedar_levs_M))
+pred_preds_M <- vector("list",length(Cedar_levs_M))
+null_preds_M <- vector("list",length(Cedar_levs_M))
+
+for(i in 1:length(Cedar_levs_M)) #Cedar_levs is the unique number of patch ids
+{
+  # For each one of if (!requireNamespace("devtools", quietly = TRUE)){install.packages("devtools")} devtools::install_github("jbisanz/qiime2R")the patch ids, this is looping through. If you want to trouble shoot this, put i = 1 into the r consul and run line by line. Patch id out, running the model, and predicting on the left out patch
+  
+  # Data use to fit the model
+  Cedar_in_M[[i]]<-Cedar_use_M[-which(Cedar_use_M$Patch_ID==Cedar_levs_M[i]),]
+  
+  # Data used to test the model
+  Cedar_out_M[[i]]<-Cedar_use_M[which(Cedar_use_M$Patch_ID==Cedar_levs_M[i]),]
+  
+  m0_Cedar_M<-stan_glmer(Bites_Binomial~Season+(1|Patch_ID),data=Cedar_in_M[[i]],cores=4, family = "binomial",iter=10000)
+  
+  # Making predictions for the left out data
+  null_preds_M[[i]]=posterior_epred(m0_Cedar_M,newdata=Cedar_out_M[[i]])
+  
+  mPRED_Cedar_M<-stan_glmer(Bites_Binomial~Season+Monoterpenes_Pred_std+(1|Patch_ID),data=Cedar_in_M[[i]],cores=4, family = "binomial",iter=10000)
+  
+  pred_preds_M[[i]]=posterior_epred(mPRED_Cedar_M,newdata=Cedar_out_M[[i]])
+  
+  mREF_Cedar_M<-stan_glmer(Bites_Binomial~Season+Monoterpenes_Ref_std+(1|Patch_ID),data=Cedar_in_M[[i]],cores=4, family = "binomial",iter=10000)
+  
+  ref_preds_M[[i]]<-posterior_epred(mREF_Cedar_M,newdata=Cedar_out_M[[i]])
+  }
+
+null_preds_t_M<-t(null_preds_M)
+
+# Extracting the predictions
+# Binding the results together in a single data frame
+Cedar_logo_M<-vector("list",4)
+names(Cedar_logo_M)<-c("out_data","null","ref","pred")
+Cedar_logo_M[[1]]<-do.call("rbind",Cedar_out_M)
+Cedar_logo_M[[2]]<-t(do.call("cbind",null_preds_M))
+Cedar_logo_M[[3]]<-t(do.call("cbind",ref_preds_M))
+Cedar_logo_M[[4]]<-t(do.call("cbind",pred_preds_M))
+
+# Save the object 
+save(Cedar_logo_M,file="Cedar_logo_M.Rdata")
+
+# Load(file="Cedar_logo.Rdata")
+str(Cedar_logo_M)
+
+# Predicted data
+# These are the predictions from the three models above. These are matrices, because we are doing this in a Bayesian context. 
+null_preds_M <- Cedar_logo_M$null
+ref_preds_M <- Cedar_logo_M$ref
+pred_preds_M <- Cedar_logo_M$pred
+
+# New variable
+Cedar_obs_M <- Cedar_logo_M$out_data$Bites
+
+# New variable (not sure what this would be in KG_Magic)
+Cedar_total_M <- Cedar_logo_M$out_data$Bites
+
+# 1 = whether you're doing the mean across rows or columns
+# Trying to predict across patchm, to create something in a list. 
+Cedar_null_M <- apply(null_preds_M,1,mean)
+length(Cedar_null_M) #427
+Cedar_ref_M <- apply(ref_preds_M,1,mean)
+length(Cedar_ref_M) #427
+Cedar_pred_M <- apply(pred_preds_M,1,mean)
+length(Cedar_pred_M) #427
+
+# Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
+mae(Cedar_null_M,Cedar_obs_M) #2.286548
+mae(Cedar_ref_M,Cedar_obs_M) #2.278343
+mae(Cedar_pred_M, Cedar_obs_M) #2.286849
+
+##CP
+
+# In this code, we are creating subsets of the data
+Cedar_levs_CP <- unique(Cedar_use_CP$Patch_ID)
+Cedar_in_CP <- vector("list",length(Cedar_levs_CP))
+Cedar_out_CP <- vector("list",length(Cedar_levs_CP))
+
+# We are testing three different models:
+# Model 1 is the observed chemmistry
+# Model 2 is the predicted chemmistry
+# Model 3 is a null model with no chemmistry
+ref_preds_CP <- vector("list",length(Cedar_levs_CP))
+pred_preds_CP <- vector("list",length(Cedar_levs_CP))
+null_preds_CP <- vector("list",length(Cedar_levs_CP))
+
+for(i in 1:length(Cedar_levs_CP)) #Cedar_levs is the unique number of patch ids
+{
+  # For each one of if (!requireNamespace("devtools", quietly = TRUE)){install.packages("devtools")} devtools::install_github("jbisanz/qiime2R")the patch ids, this is looping through. If you want to trouble shoot this, put i = 1 into the r consul and run line by line. Patch id out, running the model, and predicting on the left out patch
+  
+  # Data use to fit the model
+  Cedar_in_CP[[i]]<-Cedar_use_CP[-which(Cedar_use_CP$Patch_ID==Cedar_levs_CP[i]),]
+  
+  # Data used to test the model
+  Cedar_out_CP[[i]]<-Cedar_use_CP[which(Cedar_use_CP$Patch_ID==Cedar_levs_CP[i]),]
+  
+  m0_Cedar_CP<-stan_glmer(Bites_Binomial~Season+(1|Patch_ID),data=Cedar_in_CP[[i]],cores=4, family = "binomial",iter=10000)
+  
+  # Making predictions for the left out data
+  null_preds_CP[[i]]=posterior_epred(m0_Cedar_CP,newdata=Cedar_out_CP[[i]])
+  
+  mPRED_Cedar_CP<-stan_glmer(Bites_Binomial~Season+CP_Pred_std+(1|Patch_ID),data=Cedar_in_CP[[i]],cores=4, family = "binomial",iter=10000)
+  
+  pred_preds_CP[[i]]=posterior_epred(mPRED_Cedar_CP,newdata=Cedar_out_CP[[i]])
+  
+  mREF_Cedar_CP<-stan_glmer(Bites_Binomial~Season+CP_Ref_std+(1|Patch_ID),data=Cedar_in_CP[[i]],cores=4, family = "binomial",iter=10000)
+  
+  ref_preds_CP[[i]]<-posterior_epred(mREF_Cedar_CP,newdata=Cedar_out_CP[[i]])
+  }
+
+null_preds_t_CP<-t(null_preds_CP)
+
+# Extracting the predictions
+# Binding the results together in a single data frame
+Cedar_logo_CP<-vector("list",4)
+names(Cedar_logo_CP)<-c("out_data","null","ref","pred")
+Cedar_logo_CP[[1]]<-do.call("rbind",Cedar_out_CP)
+Cedar_logo_CP[[2]]<-t(do.call("cbind",null_preds_CP))
+Cedar_logo_CP[[3]]<-t(do.call("cbind",ref_preds_CP))
+Cedar_logo_CP[[4]]<-t(do.call("cbind",pred_preds_CP))
+
+# Save the object 
+save(Cedar_logo_CP,file="Cedar_logo_CP.Rdata")
+
+# Load(file="Cedar_logo.Rdata")
+str(Cedar_logo_CP)
+
+# Predicted data
+# These are the predictions from the three models above. These are matrices, because we are doing this in a Bayesian context. 
+null_preds_CP <- Cedar_logo_CP$null
+ref_preds_CP <- Cedar_logo_CP$ref
+pred_preds_CP <- Cedar_logo_CP$pred
+
+# New variable
+Cedar_obs_CP <- Cedar_logo_CP$out_data$Bites
+
+# New variable (not sure what this would be in KG_Magic)
+Cedar_total_CP <- Cedar_logo_CP$out_data$Bites
+
+# 1 = whether you're doing the mean across rows or columns
+# Trying to predict across patchm, to create something in a list. 
+Cedar_null_CP <- apply(null_preds_CP,1,mean)
+length(Cedar_null_CP) #422
+Cedar_ref_CP <- apply(ref_preds_CP,1,mean)
+length(Cedar_ref_CP) #422
+Cedar_pred_CP <- apply(pred_preds_CP,1,mean)
+length(Cedar_pred_CP) #422
+
+# Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
+mae(Cedar_null_CP,Cedar_obs_CP) #2.313035
+mae(Cedar_ref_CP,Cedar_obs_CP) #2.310158
+mae(Cedar_pred_CP, Cedar_obs_CP) #2.306292
+
+```
+
+# General posterior draw descriptive statistics
+
+```{r}
+
+nameo <- list.files()[-1]
+
+chemm_range <- read.csv("Text_Chemistry_Mins_Max_16Nov2025.csv")
+
+load("mREF_Cedar_single_P.Rdata")
+load("mPRED_Cedar_single_P.Rdata")
+
+load("mREF_Cedar_single_M.Rdata")
+load("mPRED_Cedar_single_M.Rdata")
+
+load("mREF_Cedar_single_CP.Rdata")
+load("mPRED_Cedar_single_CP.Rdata")
+
+#All chemicals
+chemm <- read.csv("Text_Chemistry_Mins_Max_16Nov2025.csv")
+
+#First we will pull out the posterior draws:
+ref_cedar_posteriors_P <- data.frame(mREF_Cedar_single_P)
+pred_cedar_posteriors_P <- data.frame(mPRED_Cedar_single_P)
+
+ref_cedar_posteriors_M <- data.frame(mREF_Cedar_single_M)
+pred_cedar_posteriors_M <- data.frame(mPRED_Cedar_single_M)
+
+ref_cedar_posteriors_CP <- data.frame(mREF_Cedar_single_CP)
+pred_cedar_posteriors_CP <- data.frame(mPRED_Cedar_single_CP)
+
+dim(ref_cedar_posteriors_P) #20000    94
+dim(pred_cedar_posteriors_P) #20000    94
+
+dim(ref_cedar_posteriors_M) #20000    94
+dim(pred_cedar_posteriors_M) #20000    94
+
+dim(ref_cedar_posteriors_CP) #20000    94
+dim(pred_cedar_posteriors_CP) #20000    94
+
+```
+
+# Probability of Direction - Reference chemmistry
+
+What is the percentage of draws that are either positive of negative?
+
+```{r}
+
+# Phenolics
+length(which(ref_cedar_posteriors_P$Phenolics_Ref_std>0))/length(ref_cedar_posteriors_P$Phenolics_Ref_std) #0.772
+length(which(ref_cedar_posteriors_P$Phenolics_Ref_std<0))/length(ref_cedar_posteriors_P$Phenolics_Ref_std) #0.228
+
+# Monoterpenes
+length(which(ref_cedar_posteriors_M$Monoterpenes_Ref_std>0))/length(ref_cedar_posteriors_M$Monoterpenes_Ref_std) #0.0.99545
+length(which(ref_cedar_posteriors_M$Monoterpenes_Ref_std<0))/length(ref_cedar_posteriors_M$Monoterpenes_Ref_std) #0.00455
+
+# Crude Proteins
+length(which(ref_cedar_posteriors_CP$CP_Ref_std>0))/length(ref_cedar_posteriors_CP$CP_Ref_std) #0.8668
+length(which(ref_cedar_posteriors_CP$CP_Ref_std<0))/length(ref_cedar_posteriors_CP$CP_Ref_std) #0.1332
+
+```
+
+# Probability of Direction - Predicted chemmistry
+
+What is the percentage of draws that are either positive of negative?
+
+```{r}
+
+# Phenolics
+length(which(pred_cedar_posteriors_P$Phenolics_Pred_std>0))/length(pred_cedar_posteriors_P$Phenolics_Pred_std) #0.85015
+length(which(pred_cedar_posteriors_P$Phenolics_Pred_std<0))/length(pred_cedar_posteriors_P$Phenolics_Pred_std) #0.14985
+
+# Monoterpenes
+length(which(pred_cedar_posteriors_M$Monoterpenes_Pred_std>0))/length(pred_cedar_posteriors_M$Monoterpenes_Pred_std) #0.57895
+length(which(pred_cedar_posteriors_M$Monoterpenes_Pred_std<0))/length(pred_cedar_posteriors_M$Monoterpenes_Pred_std) #0.42105
+
+# Crude Proteins
+length(which(pred_cedar_posteriors_CP$CP_Pred_std>0))/length(pred_cedar_posteriors_CP$CP_Pred_std) #0.96365
+length(which(pred_cedar_posteriors_CP$CP_Pred_std<0))/length(pred_cedar_posteriors_CP$CP_Pred_std) #0.03635
+
+```
+
+# Effect Size Min & Max - Reference chemmistry
+
+```{r}
+
+# Referencing min and max from data frame
+chemm$Ref_Min[which(chemm$Site=="Cedar" & chemm$Chemical=="Crude Protein")] #-1.363473
+chemm$Ref_Max[which(chemm$Site=="Cedar" & chemm$Chemical=="Crude Protein")] #2.138242
+
+# Setting up an empty vector to fill in with predictions
+predicted_diff_Phenolics_ref <- rep(NA,times=ncol(ref_cedar_posteriors_P))
+predicted_diff_Monoterpenes_ref <- rep(NA,times=ncol(ref_cedar_posteriors_M))
+predicted_diff_cp_ref <- rep(NA,times=ncol(ref_cedar_posteriors_CP))
+
+# Phenolics
+for(i in 1:ncol(ref_cedar_posteriors_P)){
+
+# This is just an intercept + slope*x. plogis ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_P <- plogis(ref_cedar_posteriors_P$X.Intercept.[i]+ref_cedar_posteriors_P$Phenolics_Ref_std[i]*chemm$Ref_Min[which(chemm$Site=="Cedar" & chemm$Chemical=="Phenolics")])
+  
+max_pred_P <- plogis(ref_cedar_posteriors_P$X.Intercept.[i]+ref_cedar_posteriors_P$Phenolics_Ref_std[i]*chemm$Ref_Max[which(chemm$Site=="Cedar" & chemm$Chemical=="Phenolics")])
+  
+predicted_diff_Phenolics_ref[i] <- max_pred_P-min_pred_P # This is the difference we will store. 
+}  
+
+quantile(predicted_diff_Phenolics_ref,c(0.025,0.5,0.975)) 
+# 2.5%       50%     97.5% 
+#-0.016832733  0.008345562  0.152699832 
+
+# Monoterpenes
+for(i in 1:ncol(ref_cedar_posteriors_M)){
+
+# This is just an intercept + slope*x. plogis ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_M <- plogis(ref_cedar_posteriors_M$X.Intercept.[i]+ref_cedar_posteriors_M$Monoterpenes_Ref_std[i]*chemm$Ref_Min[which(chemm$Site=="Cedar" & chemm$Chemical=="Monoterpenes")])
+  
+max_pred_M <- plogis(ref_cedar_posteriors_M$X.Intercept.[i]+ref_cedar_posteriors_M$Monoterpenes_Ref_std[i]*chemm$Ref_Max[which(chemm$Site=="Cedar" & chemm$Chemical=="Monoterpenes")])
+  
+predicted_diff_Monoterpenes_ref[i] <- max_pred_M-min_pred_M # This is the difference we will store. 
+}  
+
+quantile(predicted_diff_Monoterpenes_ref,c(0.025,0.5,0.975)) 
+#      2.5%        50%      97.5% 
+#0.02200716 0.59794622 0.98556984
+
+# CP
+for(i in 1:ncol(ref_cedar_posteriors_CP)){
+
+# This is just an intercept + slope*x. plogis ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_CP <- plogis(ref_cedar_posteriors_CP$X.Intercept.[i]+ref_cedar_posteriors_CP$CP_Ref_std[i]*chemm$Ref_Min[which(chemm$Site=="Cedar" & chemm$Chemical=="Crude Protein")])
+  
+max_pred_CP <- plogis(ref_cedar_posteriors_CP$X.Intercept.[i]+ref_cedar_posteriors_CP$CP_Ref_std[i]*chemm$Ref_Max[which(chemm$Site=="Cedar" & chemm$Chemical=="Crude Protein")])
+  
+predicted_diff_cp_ref[i] <- max_pred_CP-min_pred_CP # This is the difference we will store. 
+  }  
+
+quantile(predicted_diff_cp_ref,c(0.025,0.5,0.975)) 
+#        2.5%          50%        97.5% 
+#-0.006090746  0.013670849  0.100952680 
+
+```
+
+# Effect Size Min & Max - Predicted chemmistry
+
+```{r}
+
+# Referencing min and max from data frame
+chemm$Pred_Min[which(chemm$Site=="Cedar" & chemm$Chemical=="Crude Protein")] #-1.565088
+chemm$Pred_Max[which(chemm$Site=="Cedar" & chemm$Chemical=="Crude Protein")] #2.316108
+
+# Setting up an empty vector to fill in with predictions
+predicted_diff_Phenolics_pred <- rep(NA,times=ncol(pred_cedar_posteriors_P))
+predicted_diff_Monoterpenes_pred <- rep(NA,times=ncol(pred_cedar_posteriors_M))
+predicted_diff_cp_pred <- rep(NA,times=ncol(pred_cedar_posteriors_CP))
+
+# Phenolics
+for(i in 1:ncol(pred_cedar_posteriors_P)){
+
+# This is just an intercept + slope*x. plogis ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_P <- plogis(pred_cedar_posteriors_P$X.Intercept.[i]+pred_cedar_posteriors_P$Phenolics_Pred_std[i]*chemm$Pred_Min[which(chemm$Site=="Cedar" & chemm$Chemical=="Phenolics")])
+  
+max_pred_P <- plogis(pred_cedar_posteriors_P$X.Intercept.[i]+pred_cedar_posteriors_P$Phenolics_Pred_std[i]*chemm$Pred_Max[which(chemm$Site=="Cedar" & chemm$Chemical=="Phenolics")])
+  
+predicted_diff_Phenolics_pred[i] <- max_pred_P-min_pred_P # This is the difference we will store. 
+}  
+
+quantile(predicted_diff_Phenolics_pred,c(0.025,0.5,0.975)) 
+#        2.5%          50%        97.5% 
+#-0.01222614  0.01005330  0.17445038 
+
+# Monoterpenes
+for(i in 1:ncol(pred_cedar_posteriors_M)){
+
+# This is just an intercept + slope*x. plogis ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_M <- plogis(pred_cedar_posteriors_M$X.Intercept.[i]+pred_cedar_posteriors_M$Monoterpenes_Pred_std[i]*chemm$Pred_Min[which(chemm$Site=="Cedar" & chemm$Chemical=="Monoterpenes")])
+  
+max_pred_M <- plogis(pred_cedar_posteriors_M$X.Intercept.[i]+pred_cedar_posteriors_M$Monoterpenes_Pred_std[i]*chemm$Pred_Max[which(chemm$Site=="Cedar" & chemm$Chemical=="Monoterpenes")])
+  
+predicted_diff_Monoterpenes_pred[i] <- max_pred_M-min_pred_M # This is the difference we will store. 
+}  
+
+quantile(predicted_diff_Monoterpenes_pred,c(0.025,0.5,0.975)) 
+#         2.5%           50%         97.5% 
+#-0.054352310  0.001363939  0.055221976  
+
+# CP
+for(i in 1:ncol(pred_cedar_posteriors_CP)){
+
+# This is just an intercept + slope*x. plogis ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_CP <- plogis(pred_cedar_posteriors_CP$X.Intercept.[i]+pred_cedar_posteriors_CP$CP_Pred_std[i]*chemm$Pred_Min[which(chemm$Site=="Cedar" & chemm$Chemical=="Crude Protein")])
+  
+max_pred_CP <- plogis(pred_cedar_posteriors_CP$X.Intercept.[i]+pred_cedar_posteriors_CP$CP_Pred_std[i]*chemm$Pred_Max[which(chemm$Site=="Cedar" & chemm$Chemical=="Crude Protein")])
+  
+predicted_diff_cp_pred[i] <- max_pred_CP-min_pred_CP # This is the difference we will store. 
+  }  
+
+quantile(predicted_diff_cp_pred,c(0.025,0.5,0.975)) 
+
+#        2.5%          50%        97.5% 
+#-0.003451768  0.039192719  0.211303498
+
+```

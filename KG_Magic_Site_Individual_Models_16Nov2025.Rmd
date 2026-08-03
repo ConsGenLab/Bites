@@ -1,0 +1,889 @@
+---
+title: "Chapter 2 - Bite Data - Chemistry - Predicted Chemistry at KG Magic Site"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+This R Markdown file will input data for the KG Magic (Magic = Camas Prairie) site and prepare it for three downstream analyses determining the effects of chemistry and predicted chemistry on bite data. Negative binomial distribution (check this). 
+
+KG Magic is a pygmy rabbit site that sampled active mounds only - paired on (3x3 grid=9) and off mound (3x4 cardinal directions=12). Individual plant data is available for this site. Data was collected in Spring and Winter, and had no upper limit for the number of bites counted. A negative binomial distribution was used to analyze this data set.
+
+In addition to these data, individual pellet counts within a meter of each individual shrub. 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#Load libraries
+library("rprojroot")
+library("loo")
+library("rstanarm")
+options(mc.cores = parallel::detectCores())
+library("ggplot2")
+library("bayesplot")
+theme_set(bayesplot::theme_default(base_family = "sans"))
+library("MASS")
+library("lme4")
+library("brms")
+library("rstanarm")
+```
+
+# Functions
+
+These functions are used throughout the markdown, and include ways for evaluating predictive error and standardizing the inputs. 
+
+## Root mean square error (RSME)
+This shows the difference between an estimator and the values observed, and provides a measure of accuracy.
+
+## Mean absolute error (MAE)
+This is a measure of errors between paired observations expressing the same phenomenon, and is one of a number of ways of comparing forecasts with their eventual outcomes.
+
+## Residual sum of squares (RSS)
+This is a measure of discrepancy between the data (x) and the model (d). A small value indicates a good fit between the data and the model (0 is a perfect fit). This number can be infinite, as far as I'm aware.
+
+## Total sum of squares (TSS)
+
+This is the explained sum of squares plus the RSS. 
+
+## R2
+
+The proportion of variance explained by the model out of the total variance in the data (0-1). Closer to one means 100% fit. 
+
+## splt
+
+Tidies up the data by removing the double names
+
+## stdize
+
+Putting all of the covariates on the same scale 
+http://www.stat.columbia.edu/~gelman/research/published/standardizing7.pdf
+
+
+```{r}
+# This first function is for root mean square, where m is the model predictions, and x is the data.
+rmse <- function(m,x) 
+{
+  sqrt(mean((x-m)^2,na.rm=T))
+}
+
+# This function is for mean absolute error, where m is the model predictions, and x is the data. 
+mae <- function(m,x)
+{
+  mean(abs(((x-m))),na.rm=T)
+}
+
+# This function is for residual sum of squares
+RSS <- function(m,x) 
+{
+  sum((((m))-(x))^2)
+}
+
+# This function is for total sum of squares
+TSS <- function(x) 
+{
+  sum(((x)-(mean(x)))^2)
+  }
+
+R2<-function(m,x,logo=F) {
+  mors<-na.omit(data.frame(m,x))
+  m<-mors$m
+  x<-mors$x
+  
+  if(logo==F) {return(1-RSS(m,x)/TSS(x))} else {return(1-RSS1(m,x)/TSS1(x))}
+}
+
+# Split names
+splt=function(x,split,num) {
+  
+  x<-as.character(x)
+  p1=strsplit(x,split=split,fixed=T)
+  p2=unlist(lapply(p1,"[",num))
+  return(p2)
+}
+
+# Standardize covariates
+stdize<-function(x) {(x-mean(x,na.rm=T))/(2*sd(x,na.rm=T))}
+
+```
+
+# Read in Files
+
+In the input file for the KG Magic site, you'll see that the number of bites are taken from individual plants (as opposed to averaged across morphotypes).  
+
+```{r}
+# Main data set that includes all the sites, chemotype levels. We're setting periods and blank spaces to read in to R as NA:
+Phenolics <- read.csv("Phenolics.csv", na.strings=c("."," ","","NA"))
+Monoterpenes <- read.csv("Monoterpenes.csv", na.strings=c("."," ","","NA"))
+Crude_Protein <- read.csv("Crude_protein.csv", na.strings=c("."," ","","NA"))
+
+# Subset datasets to KG Magic site:
+KG_Magic_P <-subset(Phenolics,Phenolics$Site=="KGMagic") 
+KG_Magic_M <-subset(Monoterpenes, Monoterpenes$Site=="KGMagic") 
+KG_Magic_CP <-subset(Crude_Protein,Crude_Protein$Site=="KGMagic") 
+
+# See the distribution of number of bites. You'll see there is no averaged data here. 
+unique(KG_Magic_P$Bites)
+unique(KG_Magic_M$Bites)
+unique(KG_Magic_CP$Bites)
+
+## Check out the dimensions of the input data:
+# Bites
+length(KG_Magic_P$Bites) #428
+table(KG_Magic_P$Bites)
+
+length(KG_Magic_M$Bites) #498 
+table(KG_Magic_M$Bites)
+
+length(KG_Magic_CP$Bites) #499
+table(KG_Magic_CP$Bites)
+
+# Season
+table(KG_Magic_P$Season) #Spring = 350, Winter = 78
+table(KG_Magic_M$Season) #Spring = 404, Winter = 94
+table(KG_Magic_CP$Season) #Spring = 405, Winter = 94
+
+# Species
+table(KG_Magic_P$Species) #3-tip = 8, Dwarf = 2, Wyoming = 418
+table(KG_Magic_M$Species) #3-tip = 8, Dwarf = 5, Wyoming = 485
+table(KG_Magic_CP$Species) #3-tip = 8, Dwarf = 5, Wyoming = 486
+
+# Plant height # Not available at this site
+table(KG_Magic_P$PlantSize) #table of extent 0
+table(KG_Magic_M$PlantSize) #table of extent 0
+table(KG_Magic_CP$PlantSize) #table of extent 0
+
+# Patch type
+table(KG_Magic_P$PatchType) #Off = 244, On = 184
+table(KG_Magic_M$PatchType) #Off = 282, On = 216
+table(KG_Magic_CP$PatchType) #Off = 283, On = 216
+
+#Patch_ID here is the random effect # Double check this
+table(KG_Magic_P$Patch_ID)[-which(table(KG_Magic_P$Patch_ID)==0)] #named integer(0)
+table(KG_Magic_M$Patch_ID)[-which(table(KG_Magic_P$Patch_ID)==0)] #named integer(0)
+table(KG_Magic_CP$Patch_ID)[-which(table(KG_Magic_P$Patch_ID)==0)] #named integer(0)
+
+# Standardize our covariates
+# Putting all of the covariates on the same scale 
+# http://www.stat.columbia.edu/~gelman/research/published/standardizing7.pdf
+stdize<-function(x) {(x-mean(x,na.rm=T))/(2*sd(x,na.rm=T))}
+
+KG_Magic_P$Phenolics_Pred_std <- stdize(KG_Magic_P$Phenolics_newpred)
+KG_Magic_M$Monoterpenes_Pred_std <- stdize(KG_Magic_M$Monoterpenes_newpred)
+KG_Magic_CP$CP_Pred_std<-stdize(KG_Magic_CP$CP_newpred)
+
+KG_Magic_P$Phenolics_Ref_std <- stdize(KG_Magic_P$Phenolics_Ref)
+KG_Magic_M$Monoterpenes_Ref_std<-stdize(KG_Magic_M$Monoterpenes_Ref)
+KG_Magic_CP$CP_Ref_std<-stdize(KG_Magic_CP$CP_Ref)
+
+# Create the data set that we use moving forward
+KG_Magic_P_use <- na.omit(data.frame(Bites=KG_Magic_P$Bites, PatchType=KG_Magic_P$PatchType, Season=KG_Magic_P$Season, Phenolics_Pred_std=KG_Magic_P$Phenolics_Pred_std,Patch_ID=KG_Magic_P$Patch_ID,Phenolics_Ref_std=KG_Magic_P$Phenolics_Ref_std))
+
+KG_Magic_M_use <- na.omit(data.frame(Bites=KG_Magic_M$Bites,PatchType=KG_Magic_M$PatchType, Season=KG_Magic_M$Season,Monoterpenes_Pred_std=KG_Magic_M$Monoterpenes_Pred_std,Patch_ID=KG_Magic_M$Patch_ID,Monoterpenes_Ref_std=KG_Magic_M$Monoterpenes_Ref_std))
+
+KG_Magic_CP_use <- na.omit(data.frame(Bites=KG_Magic_CP$Bites, CP_Pred_std=KG_Magic_CP$CP_Pred_std,PatchType=KG_Magic_CP$PatchType, Season=KG_Magic_CP$Season,Patch_ID=KG_Magic_CP$Patch_ID,CP_Ref_std=KG_Magic_CP$CP_Ref_std))
+
+## Check out the dimensions of the final data. Remember, NAs have been removed:
+# Bites
+length(KG_Magic_P_use$Bites) #428
+table(KG_Magic_P_use$Bites)
+
+length(KG_Magic_M_use$Bites) #486
+table(KG_Magic_M_use$Bites)
+
+length(KG_Magic_CP_use$Bites) #487
+table(KG_Magic_CP_use$Bites) 
+
+# Season
+table(KG_Magic_P_use$Season) #Spring = 350, winter = 78
+table(KG_Magic_M_use$Season) #Spring = 404, winter = 82
+table(KG_Magic_CP_use$Season) #Spring = 405, winter = 82
+
+# Patch type
+table(KG_Magic_P_use$PatchType) #Off = 244, on = 184
+table(KG_Magic_M_use$PatchType) #Off = 277, on = 209
+table(KG_Magic_CP_use$PatchType) #Off = 278, on = 209
+
+#Mins and Maxes
+min(KG_Magic_P_use$Phenolics_Ref_std) #-1.238274
+max(KG_Magic_P_use$Phenolics_Ref_std) #3.270009
+min(KG_Magic_P_use$Phenolics_Pred_std) #-1.363222
+max(KG_Magic_P_use$Phenolics_Pred_std) #1.415847
+
+min(KG_Magic_M_use$Monoterpenes_Ref_std) #-0.9916437
+max(KG_Magic_M_use$Monoterpenes_Ref_std) #1.501891
+min(KG_Magic_M_use$Monoterpenes_Pred_std) #-1.459817
+max(KG_Magic_M_use$Monoterpenes_Pred_std) #0.8884188
+
+min(KG_Magic_CP_use$CP_Ref_std) #-1.30037
+max(KG_Magic_CP_use$CP_Ref_std) #2.488451
+min(KG_Magic_CP_use$CP_Pred_std) #-1.34902
+max(KG_Magic_CP_use$CP_Pred_std) #2.00042
+
+## Descriptive Stats
+
+# Phenolics
+mean(KG_Magic_P$Phenolics_Ref, na.rm=TRUE) #11.94784
+sd(KG_Magic_P$Phenolics_Ref, na.rm=TRUE) #4.441225
+mean(KG_Magic_P$Phenolics_newpred, na.rm=TRUE) #11.9506
+sd(KG_Magic_P$Phenolics_newpred, na.rm=TRUE) #5.961768
+
+mean(KG_Magic_P_use$Phenolics_Ref_std, na.rm=TRUE) #5.162018e-17
+sd(KG_Magic_P_use$Phenolics_Ref_std, na.rm=TRUE) #0.5
+mean(KG_Magic_P_use$Phenolics_Pred_std, na.rm=TRUE) #-2.879317e-17
+sd(KG_Magic_P_use$Phenolics_Pred_std, na.rm=TRUE) #0.5
+
+# Monoterpenes
+mean(KG_Magic_M$Monoterpenes_Ref, na.rm=TRUE) #2204.957
+sd(KG_Magic_M$Monoterpenes_Ref, na.rm=TRUE) #893.7906
+mean(KG_Magic_M$Monoterpenes_newpred, na.rm=TRUE) #2176.32
+sd(KG_Magic_M$Monoterpenes_newpred, na.rm=TRUE) #722.4094
+
+mean(KG_Magic_M_use$Monoterpenes_Ref_std, na.rm=TRUE) #0.01686997
+sd(KG_Magic_M_use$Monoterpenes_Ref_std, na.rm=TRUE) #0.4939539
+mean(KG_Magic_M_use$Monoterpenes_Pred_std, na.rm=TRUE) #0.01791427
+sd(KG_Magic_M_use$Monoterpenes_Pred_std, na.rm=TRUE) #0.4920768
+
+# Crude Proteins
+mean(KG_Magic_CP$CP_Ref, na.rm=TRUE) #10.47658
+sd(KG_Magic_CP$CP_Ref, na.rm=TRUE) #1.913524
+mean(KG_Magic_CP$CP_newpred, na.rm=TRUE) #10.49879
+sd(KG_Magic_CP$CP_newpred, na.rm=TRUE) #1.537988
+
+mean(KG_Magic_CP_use$CP_Ref_std, na.rm=TRUE) #0.009071084
+sd(KG_Magic_CP_use$CP_Ref_std, na.rm=TRUE) #0.5018873
+mean(KG_Magic_CP_use$CP_Pred_std, na.rm=TRUE) #0.003424819
+sd(KG_Magic_CP_use$CP_Pred_std, na.rm=TRUE) #0.5024934
+
+```
+
+# Question 1: What are the effects of chemistry on bites?
+
+```{r}
+#.nb = negative binomial
+
+mREF_KG_Magic_single_P<-rstanarm::stan_glmer.nb(Bites~Season+Phenolics_Ref_std+(1|Patch_ID),data=KG_Magic_P_use,cores=4, iter=10000)
+
+mREF_KG_Magic_single_M<-rstanarm::stan_glmer.nb(Bites~Season+Monoterpenes_Ref_std+(1|Patch_ID),data=KG_Magic_M_use,cores=4, iter=10000)
+
+mREF_KG_Magic_single_CP<-rstanarm::stan_glmer.nb(Bites~Season+CP_Ref_std+(1|Patch_ID),data=KG_Magic_CP_use,cores=4, iter=10000)
+
+summary(mREF_KG_Magic_single_P)
+summary(mREF_KG_Magic_single_M)
+summary(mREF_KG_Magic_single_CP)
+
+png(file="./KG_Magic_Reference_P.png")
+plot(mREF_KG_Magic_single_P,regex_pars="_std")
+dev.off()
+save(mREF_KG_Magic_single_P, file = "mREF_KG_Magic_single_P.Rdata")
+
+png(file="./KG_Magic_Reference_M.png")
+plot(mREF_KG_Magic_single_M,regex_pars="_std")
+dev.off()
+save(mREF_KG_Magic_single_M, file = "mREF_KG_Magic_single_M.Rdata")
+
+png(file="./KG_Magic_Reference_CP.png")
+plot(mREF_KG_Magic_single_CP,regex_pars="_std")
+dev.off()
+save(mREF_KG_Magic_single_CP, file = "mREF_KG_Magic_single_CP.Rdata")
+
+##############
+# Extract posteriors
+
+KG_Magic_single_REF_P <- as.data.frame(mREF_KG_Magic_single_P)
+KG_Magic_single_REF_M <- as.data.frame(mREF_KG_Magic_single_M)
+KG_Magic_single_REF_CP <- as.data.frame(mREF_KG_Magic_single_CP)
+
+Phenolics_out <- KG_Magic_single_REF_P$Phenolics_Ref_std
+Phenolics_REF_cat <- rep("Phenolics_REF",times=length(Phenolics_out))
+
+CP_out <- KG_Magic_single_REF_CP$CP_Ref_std
+CP_REF_cat <- rep("CP_REF",times=length(CP_out))
+
+Monoterpenes_out <- KG_Magic_single_REF_M$Monoterpenes_Ref_std
+Monoterpenes_REF_cat <- rep("Monoterpenes_REF",times=length(Monoterpenes_out))
+
+pos_draws <- c(Phenolics_out,CP_out,Monoterpenes_out)
+
+chem_type <- c(Phenolics_REF_cat,CP_REF_cat,Monoterpenes_REF_cat)
+
+KG_Magic_single_REF <- data.frame(pos_draws,chem_type)
+
+KG_Magic_single_REF$Site<-rep("KG_Magic",times=nrow(KG_Magic_single_REF))
+
+save(KG_Magic_single_REF ,file="KG_Magic_single_REF.Rdata")
+
+```
+
+# Question 2: Does inference on chemistry effects change when using predicted, rather than observed values?
+
+```{r}
+
+mPRED_KG_Magic_single_P <-rstanarm::stan_glmer.nb(Bites~Season+Phenolics_Pred_std+(1|Patch_ID),data=KG_Magic_P_use,cores=4,iter=10000)
+
+mPRED_KG_Magic_single_M <-rstanarm::stan_glmer.nb(Bites~Season+Monoterpenes_Pred_std+(1|Patch_ID),data=KG_Magic_M_use,cores=4,iter=10000)
+
+mPRED_KG_Magic_single_CP <-rstanarm::stan_glmer.nb(Bites~Season+CP_Pred_std+(1|Patch_ID),data=KG_Magic_CP_use,cores=4,iter=10000)
+
+summary(mPRED_KG_Magic_single_P)
+summary(mPRED_KG_Magic_single_M)
+summary(mPRED_KG_Magic_single_CP)
+
+png(file="./KG_Magic_Predicted_P.png")
+plot(mPRED_KG_Magic_single_P,regex_pars="_std")
+dev.off()
+save(mPRED_KG_Magic_single_P, file = "mPRED_KG_Magic_single_P.Rdata")
+
+png(file="./KG_Magic_Predicted_M.png")
+plot(mPRED_KG_Magic_single_M,regex_pars="_std")
+dev.off()
+save(mPRED_KG_Magic_single_M, file = "mPRED_KG_Magic_single_M.Rdata")
+
+png(file="./KG_Magic_Predicted_CP.png")
+plot(mPRED_KG_Magic_single_CP,regex_pars="_std")
+dev.off()
+save(mPRED_KG_Magic_single_CP, file = "mPRED_KG_Magic_single_CP.Rdata")
+
+##############
+# Extract posteriors
+
+KG_Magic_single_PRED_P <- as.data.frame(mPRED_KG_Magic_single_P)
+KG_Magic_single_PRED_M <- as.data.frame(mPRED_KG_Magic_single_M)
+KG_Magic_single_PRED_CP <- as.data.frame(mPRED_KG_Magic_single_CP)
+
+Phenolics_out <- KG_Magic_single_PRED_P$Phenolics_Pred_std
+Phenolics_PRED_cat <- rep("Phenolics_PRED",times=length(Phenolics_out))
+
+CP_out <- KG_Magic_single_PRED_CP$CP_Pred_std
+CP_PRED_cat <- rep("CP_PRED",times=length(CP_out))
+
+Monoterpenes_out <- KG_Magic_single_PRED_M$Monoterpenes_Pred_std
+Monoterpenes_PRED_cat <- rep("Monoterpenes_PRED",times=length(Monoterpenes_out))
+
+pos_draws <- c(Phenolics_out,CP_out,Monoterpenes_out)
+
+chem_type <- c(Phenolics_PRED_cat,CP_PRED_cat,Monoterpenes_PRED_cat)
+
+KG_Magic_single_PRED <- data.frame(pos_draws,chem_type)
+
+KG_Magic_single_PRED$Site<-rep("KG_Magic",times=nrow(KG_Magic_single_PRED))
+
+save(KG_Magic_single_PRED ,file="KG_Magic_single_PRED.Rdata")
+
+```
+
+# Question 3: how does the predictions changes when using obs vs predicted chemistry?
+
+# https://onlinelibrary.wiley.com/doi/full/10.1111/ecog.02881
+#paper that describes our leave-one-out approach
+
+```{r}
+########################Phenolics
+# In this code, we are creating subsets of the data
+KG_levs_P <- unique(KG_Magic_P_use$Patch_ID)
+KG_in_P <- vector("list",length(KG_levs_P))
+KG_out_P <- vector("list",length(KG_levs_P))
+
+# We are testing three different models:
+# Model 1 is the observed chemistry
+# Model 2 is the predicted chemistry
+# Model 3 is a null model with no chemistry
+ref_preds_P <- vector("list",length(KG_levs_P))
+pred_preds_P <- vector("list",length(KG_levs_P))
+null_preds_P <- vector("list",length(KG_levs_P))
+# Lists of predictions for each dataset
+
+ref_k_P <- vector("list",length(KG_levs_P))
+pred_k_P <- vector("list",length(KG_levs_P))
+null_k_P<- vector("list",length(KG_levs_P))
+
+for(i in 1:length(KG_levs_P)) #KG_levs is the unique number of patch ids
+{
+  # For each one of if (!requireNamespace("devtools", quietly = TRUE)){install.packages("devtools")}   devtools::install_github("jbisanz/qiime2R")the patch ids, this is looping through.
+  # If you want to trouble shoot this, put i = 1 into the r console and run line by line.
+  # Patch id out, running the model, and predicting on the left out patch
+ 
+  # Data use to fit the model
+  KG_in_P[[i]] <- KG_Magic_P_use[-which(KG_Magic_P_use$Patch_ID==KG_levs_P[i]),]
+ 
+  # Data used to test the model
+  KG_out_P[[i]] <- KG_Magic_P_use[which(KG_Magic_P_use$Patch_ID==KG_levs_P[i]),]
+ 
+  M0_KG_Magic_P <- stan_glmer.nb(Bites~Season+(1|Patch_ID),data=KG_in_P[[i]],cores=4, iter=10000)
+ 
+  # Making predictions for the left out data
+  null_preds_P[[i]] <- posterior_predict(M0_KG_Magic_P,newdata=KG_out_P[[i]])
+  null_k_P[[i]] <- data.frame(M0_KG_Magic_P)$reciprocal_dispersion
+ 
+ 
+  mPRED_KG_Magic_P <- stan_glmer.nb(Bites~Season+Phenolics_Pred_std+(1|Patch_ID),data=KG_in_P[[i]],cores=4, iter=10000)
+ 
+  pred_preds_P[[i]] <- posterior_predict(mPRED_KG_Magic_P,newdata=KG_out_P[[i]])
+  pred_k_P[[i]] <- data.frame(mPRED_KG_Magic_P)$reciprocal_dispersion
+ 
+  mREF_KG_Magic_P <- stan_glmer.nb(Bites~Season+Phenolics_Ref_std+(1|Patch_ID),data=KG_in_P[[i]],cores=4)
+ 
+  ref_preds_P[[i]] <- posterior_predict(mPRED_KG_Magic_P,newdata=KG_out_P[[i]])
+  ref_k_P[[i]] <- data.frame(mREF_KG_Magic_P)$reciprocal_dispersion
+  }
+
+# Extracting the predictions
+# Binding the results together in a single data frame
+KG_logo_P<-vector("list",4)
+names(KG_logo_P)<-c("out_data","null","ref","pred")
+KG_logo_P[[1]]<-do.call("rbind",KG_out_P)
+KG_logo_P[[2]]<-t(do.call("cbind",null_preds_P))
+KG_logo_P[[3]]<-t(do.call("cbind",ref_preds_P))
+KG_logo_P[[4]]<-t(do.call("cbind",pred_preds_P))
+
+KG_k_p <- vector("list",4)
+names(KG_k_p)<-c("out_data","null","ref","pred")
+
+KG_k_p[[1]]<-do.call("rbind",KG_out_P)
+KG_k_p[[2]]<-t(do.call("cbind",null_k_P))
+KG_k_p[[3]]<-t(do.call("cbind",ref_k_P))
+KG_k_p[[4]]<-t(do.call("cbind",pred_k_P))
+
+# Save the object
+save(KG_k_p,file="KG_k_P.Rdata")
+
+# Load(file="KG_logo_P.Rdata")
+str(KG_logo_P)
+
+# Predicted data
+# These are the predictions from the three models above. These are matrices, because we are doing this in a Bayesian context. 
+null_preds_P <- KG_logo_P$null
+
+ref_preds_P <- KG_logo_P$ref
+
+pred_preds_P <- KG_logo_P$pred
+
+# New variable
+KG_obs_P <- KG_logo_P$out_data$Bites
+
+# New variable (not sure what this would be in KG_Magic)
+KG_total_P <- KG_logo_P$out_data$Bites
+
+# 1 = whether you're doing the mean across rows or columns
+# Trying to predict across patchm, to create something in a list. 
+KG_null_P<-apply(null_preds_P,1,mean)
+length(KG_null_P)
+KG_ref_P<-apply(ref_preds_P,1,mean)
+length(KG_ref_P)
+KG_pred_P<-apply(pred_preds_P,1,mean)
+length(KG_pred_P)
+
+# Likelihood of observed data, given predicted data. 
+
+# Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
+mae(KG_null_P,KG_obs_P) #9.747313
+mae(KG_ref_P,KG_obs_P) #9.881806
+mae(KG_pred_P, KG_obs_P) #9.876057
+
+###########################Monoterpenes
+# In this code, we are creating subsets of the data
+KG_levs_M <- unique(KG_Magic_M_use$Patch_ID)
+KG_in_M <- vector("list",length(KG_levs_M))
+KG_out_M <- vector("list",length(KG_levs_M))
+
+# We are testing three different models:
+# Model 1 is the observed chemistry
+# Model 2 is the predicted chemistry
+# Model 3 is a null model with no chemistry
+ref_preds_M <- vector("list",length(KG_levs_M))
+pred_preds_M <- vector("list",length(KG_levs_M))
+null_preds_M <- vector("list",length(KG_levs_M))
+# Lists of predictions for each dataset
+
+ref_k_M <-vector("list",length(KG_levs_M))
+pred_k_M <-vector("list",length(KG_levs_M))
+null_k_M <-vector("list",length(KG_levs_M))
+
+for(i in 1:length(KG_levs_M)) #KG_levs is the unique number of patch ids
+{
+  # For each one of if (!requireNamespace("devtools", quietly = TRUE)){install.packages("devtools")}   devtools::install_github("jbisanz/qiime2R")the patch ids, this is looping through.
+  # If you want to trouble shoot this, put i = 1 into the r console and run line by line.
+  # Patch id out, running the model, and predicting on the left out patch
+ 
+  # Data use to fit the model
+  KG_in_M[[i]] <- KG_Magic_M_use[-which(KG_Magic_M_use$Patch_ID==KG_levs_M[i]),]
+ 
+  # Data used to test the model
+  KG_out_M[[i]] <- KG_Magic_M_use[which(KG_Magic_M_use$Patch_ID==KG_levs_M[i]),]
+ 
+  M0_KG_Magic_M <- stan_glmer.nb(Bites~Season+(1|Patch_ID),data=KG_in_M[[i]],cores=4, iter=10000)
+ 
+  # Making predictions for the left out data
+  null_preds_M[[i]] <- posterior_predict(M0_KG_Magic_M,newdata=KG_out_M[[i]])
+  null_k_M[[i]] <- data.frame(M0_KG_Magic_M)$reciprocal_dispersion
+ 
+ 
+  mPRED_KG_Magic_M <- stan_glmer.nb(Bites~Season+Monoterpenes_Pred_std+(1|Patch_ID),data=KG_in_M[[i]],cores=4, iter=10000)
+ 
+  pred_preds_M[[i]] <- posterior_predict(mPRED_KG_Magic_M,newdata=KG_out_M[[i]])
+  pred_k_M[[i]] <- data.frame(mPRED_KG_Magic_M)$reciprocal_dispersion
+ 
+  mREF_KG_Magic_M <- stan_glmer.nb(Bites~Season+Monoterpenes_Ref_std+(1|Patch_ID),data=KG_in_M[[i]],cores=4)
+ 
+  ref_preds_M[[i]] <- posterior_predict(mPRED_KG_Magic_M,newdata=KG_out_M[[i]])
+  ref_k_M[[i]] <- data.frame(mREF_KG_Magic_M)$reciprocal_dispersion
+  }
+
+# Extracting the predictions
+# Binding the results together in a single data frame
+KG_logo_M<-vector("list",4)
+names(KG_logo_M)<-c("out_data","null","ref","pred")
+KG_logo_M[[1]] <- do.call("rbind",KG_out_M)
+KG_logo_M[[2]] <- t(do.call("cbind",null_preds_M))
+KG_logo_M[[3]] <- t(do.call("cbind",ref_preds_M))
+KG_logo_M[[4]] <- t(do.call("cbind",pred_preds_M))
+
+KG_k_M <- vector("list",4)
+names(KG_k_M) <- c("out_data","null","ref","pred")
+
+KG_k_M[[1]] <- do.call("rbind",KG_out_M)
+KG_k_M[[2]] <- t(do.call("cbind",null_k_M))
+KG_k_M[[3]] <- t(do.call("cbind",ref_k_M))
+KG_k_M[[4]] <- t(do.call("cbind",pred_k_M))
+
+# Save the object
+save(KG_k_M,file="KG_k_M.Rdata")
+
+# Load(file="KG_logo_M.Rdata")
+str(KG_logo_M)
+
+# Predicted data
+# These are the predictions from the three models above. These are matrices, because we are doing this in a Bayesian context. 
+null_preds_M <- KG_logo_M$null
+ref_preds_M <- KG_logo_M$ref
+pred_preds_M <- KG_logo_M$pred
+
+# New variable
+KG_obs_M <- KG_logo_M$out_data$Bites
+
+# New variable (not sure what this would be in KG_Magic)
+KG_total_M <- KG_logo_M$out_data$Bites
+
+# 1 = whether you're doing the mean across rows or columns
+# Trying to predict across patchm, to create something in a list. 
+KG_null_M <- apply(null_preds_M,1,mean)
+length(KG_null_M) #486
+KG_ref_M <- apply(ref_preds_M,1,mean)
+length(KG_ref_M) #486
+KG_pred_M <- apply(pred_preds_M,1,mean)
+length(KG_pred_M) #486
+
+# Likelihood of observed data, given predicted data. 
+
+# Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
+mae(KG_null_M,KG_obs_M) #9.882156
+mae(KG_ref_M,KG_obs_M) #9.925131
+mae(KG_pred_M, KG_obs_M) #9.914694
+
+###########################Crude Protein
+# In this code, we are creating subsets of the data
+KG_levs_CP <- unique(KG_Magic_CP_use$Patch_ID)
+KG_in_CP <- vector("list",length(KG_levs_CP))
+KG_out_CP <- vector("list",length(KG_levs_CP))
+
+# We are testing three different models:
+# Model 1 is the observed chemistry
+# Model 2 is the predicted chemistry
+# Model 3 is a null model with no chemistry
+ref_preds_CP <-vector("list",length(KG_levs_CP))
+pred_preds_CP <-vector("list",length(KG_levs_CP))
+null_preds_CP <-vector("list",length(KG_levs_CP))
+# Lists of predictions for each dataset
+
+ref_k_CP <- vector("list",length(KG_levs_CP))
+pred_k_CP <- vector("list",length(KG_levs_CP))
+null_k_CP <- vector("list",length(KG_levs_CP))
+
+for(i in 1:length(KG_levs_CP)) #KG_levs is the unique number of patch ids
+{
+  # For each one of if (!requireNamespace("devtools", quietly = TRUE)){install.packages("devtools")}   devtools::install_github("jbisanz/qiime2R")the patch ids, this is looping through.
+  # If you want to trouble shoot this, put i = 1 into the r console and run line by line.
+  # Patch id out, running the model, and predicting on the left out patch
+ 
+  # Data use to fit the model
+  KG_in_CP[[i]] <- KG_Magic_CP_use[-which(KG_Magic_CP_use$Patch_ID==KG_levs_CP[i]),]
+ 
+  # Data used to test the model
+  KG_out_CP[[i]] <- KG_Magic_CP_use[which(KG_Magic_CP_use$Patch_ID==KG_levs_CP[i]),]
+ 
+  M0_KG_Magic_CP <- stan_glmer.nb(Bites~Season+(1|Patch_ID),data=KG_in_CP[[i]],cores=4, iter=10000)
+ 
+  # Making predictions for the left out data
+  null_preds_CP[[i]] <- posterior_predict(M0_KG_Magic_CP,newdata=KG_out_CP[[i]])
+  null_k_CP[[i]] <- data.frame(M0_KG_Magic_CP)$reciprocal_dispersion
+ 
+  mPRED_KG_Magic_CP <- stan_glmer.nb(Bites~Season+CP_Pred_std+(1|Patch_ID),data=KG_in_CP[[i]],cores=4, iter=10000)
+ 
+  pred_preds_CP[[i]] <- posterior_predict(mPRED_KG_Magic_CP,newdata=KG_out_CP[[i]])
+  pred_k_CP[[i]] <- data.frame(mPRED_KG_Magic_CP)$reciprocal_dispersion
+ 
+  mREF_KG_Magic_CP <- stan_glmer.nb(Bites~Season+CP_Ref_std+(1|Patch_ID),data=KG_in_CP[[i]],cores=4)
+ 
+  ref_preds_CP[[i]] <- posterior_predict(mPRED_KG_Magic_CP,newdata=KG_out_CP[[i]])
+  ref_k_CP[[i]] <- data.frame(mREF_KG_Magic_CP)$reciprocal_dispersion
+  }
+
+# Extracting the predictions
+# Binding the results together in a single data frame
+KG_logo_CP <- vector("list",4)
+names(KG_logo_CP) <- c("out_data","null","ref","pred")
+KG_logo_CP[[1]] <- do.call("rbind",KG_out_CP)
+KG_logo_CP[[2]] <- t(do.call("cbind",null_preds_CP))
+KG_logo_CP[[3]] <- t(do.call("cbind",ref_preds_CP))
+KG_logo_CP[[4]] <- t(do.call("cbind",pred_preds_CP))
+
+KG_k_CP <- vector("list",4)
+names(KG_k_CP) <- c("out_data","null","ref","pred")
+
+KG_k_CP[[1]] <- do.call("rbind",KG_out_CP)
+KG_k_CP[[2]] <- t(do.call("cbind",null_k_CP))
+KG_k_CP[[3]] <- t(do.call("cbind",ref_k_CP))
+KG_k_CP[[4]] <- t(do.call("cbind",pred_k_CP))
+
+# Save the object
+save(KG_k_CP,file="KG_k_CP.Rdata")
+
+# Load(file="KG_logo_CP.Rdata")
+str(KG_logo_CP)
+
+# Predicted data
+# These are the predictions from the three models above. These are matrices, because we are doing this in a Bayesian context. 
+null_preds_CP <- KG_logo_CP$null
+ref_preds_CP <- KG_logo_CP$ref
+pred_preds_CP <-KG_logo_CP$pred
+
+# New variable
+KG_obs_CP<-KG_logo_CP$out_data$Bites
+
+# New variable (not sure what this would be in KG_Magic)
+KG_total_CP <- KG_logo_CP$out_data$Bites
+
+# 1 = whether you're doing the mean across rows or columns
+# Trying to predict across patchm, to create something in a list. 
+KG_null_CP<-apply(null_preds_CP,1,mean)
+length(KG_null_CP) #487
+KG_ref_CP<-apply(ref_preds_CP,1,mean)
+length(KG_ref_CP) #487
+KG_pred_CP<-apply(pred_preds_CP,1,mean)
+length(KG_pred_CP) #487
+
+# Likelihood of observed data, given predicted data. 
+
+# Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
+mae(KG_null_CP,KG_obs_CP) #9.86572
+mae(KG_ref_CP,KG_obs_CP) #10.92547
+mae(KG_pred_CP, KG_obs_CP) #10.96559
+```
+
+# General posterior draw descriptive statistics
+
+```{r}
+
+nameo <- list.files()[-1]
+
+chem_range <- read.csv("Text_Chemistry_Mins_Max_16Nov2025.csv")
+
+load("mREF_KG_Magic_single_P.Rdata")
+load("mPRED_KG_Magic_single_P.Rdata")
+load("mREF_KG_Magic_single_M.Rdata")
+load("mPRED_KG_Magic_single_M.Rdata")
+load("mREF_KG_Magic_single_CP.Rdata")
+load("mPRED_KG_Magic_single_CP.Rdata")
+
+#All chemicals
+chemm <- read.csv("Text_Chemistry_Mins_Max_16Nov2025.csv")
+
+#First we will pull out the posterior draws:
+#Phenolics
+ref_KG_posteriors_P <- data.frame(mREF_KG_Magic_single_P)
+pred_KG_posteriors_P <- data.frame(mPRED_KG_Magic_single_P)
+
+#Monoterpenes
+ref_KG_posteriors_M <- data.frame(mREF_KG_Magic_single_M)
+pred_KG_posteriors_M <- data.frame(mPRED_KG_Magic_single_M)
+
+#CP
+ref_KG_posteriors_CP <- data.frame(mREF_KG_Magic_single_CP)
+pred_KG_posteriors_CP <- data.frame(mPRED_KG_Magic_single_CP)
+
+dim(ref_KG_posteriors_P) #20000    25
+dim(pred_KG_posteriors_P) #20000    25
+dim(ref_KG_posteriors_M) #20000    27
+dim(pred_KG_posteriors_M) #20000    27
+dim(ref_KG_posteriors_CP) #20000    27
+dim(pred_KG_posteriors_CP) #20000    27
+
+```
+
+# Probability of Direction - Reference
+
+What is the percentage of draws that are either positive of negative?
+
+```{r}
+
+# Crude Proteins
+length(which(ref_KG_posteriors_CP$CP_Ref_std>0))/length(ref_KG_posteriors_CP$CP_Ref_std) #1
+ 
+length(which(ref_KG_posteriors_CP$CP_Ref_std<0))/length(ref_KG_posteriors_CP$CP_Ref_std) #0
+
+# Monoterpenes
+length(which(ref_KG_posteriors_M$Monoterpenes_Ref_std>0))/length(ref_KG_posteriors_M$Monoterpenes_Ref_std) #0.00515
+
+length(which(ref_KG_posteriors_M$Monoterpenes_Ref_std<0))/length(ref_KG_posteriors_M$Monoterpenes_Ref_std) #0.99485
+
+# Phenolics
+length(which(ref_KG_posteriors_P$Phenolics_Ref_std>0))/length(ref_KG_posteriors_P$Phenolics_Ref_std) #7e-04
+
+length(which(ref_KG_posteriors_P$Phenolics_Ref_std<0))/length(ref_KG_posteriors_P$Phenolics_Ref_std) #0.9993
+
+```
+
+# Probability of Direction - Predicted Chemistry
+
+What is the percentage of draws that are either positive of negative?
+
+```{r}
+
+# Crude Proteins
+length(which(pred_KG_posteriors_CP$CP_Pred_std>0))/length(pred_KG_posteriors_CP$CP_Pred_std) #0.9999
+
+length(which(pred_KG_posteriors_CP$CP_Pred_std<0))/length(pred_KG_posteriors_CP$CP_Pred_std) #1e-04
+
+# Monoterpenes
+length(which(pred_KG_posteriors_M$Monoterpenes_Pred_std>0))/length(pred_KG_posteriors_M$Monoterpenes_Pred_std) #0.0187
+
+length(which(pred_KG_posteriors_M$Monoterpenes_Pred_std<0))/length(pred_KG_posteriors_M$Monoterpenes_Pred_std) #0.9813
+
+# Phenolics
+length(which(pred_KG_posteriors_P$Phenolics_Pred_std>0))/length(pred_KG_posteriors_P$Phenolics_Pred_std) #0.4755
+
+length(which(pred_KG_posteriors_P$Phenolics_Pred_std<0))/length(pred_KG_posteriors_P$Phenolics_Pred_std) #0.5245
+
+```
+
+# Effect Size Min & Max - Reference Chemistry
+
+```{r}
+
+# Referencing min and max from data frame
+chemm$Ref_Min[which(chemm$Site=="KG_Magic" & chemm$Chemical=="Crude Protein")] 
+chemm$Ref_Max[which(chemm$Site=="KG_Magic" & chemm$Chemical=="Crude Protein")] 
+
+# Setting up an empty vector to fill in with predictions
+predicted_diff_Phenolics_ref <- rep(NA,times=ncol(ref_KG_posteriors_P))
+predicted_diff_Monoterpenes_ref <- rep(NA,times=ncol(ref_KG_posteriors_M))
+predicted_diff_cp_ref <- rep(NA,times=ncol(ref_KG_posteriors_CP))
+
+# Phenolics
+for(i in 1:ncol(ref_KG_posteriors_P)){
+
+# This is just an intercept + slope*x. exp ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_P <- exp(ref_KG_posteriors_P$X.Intercept.[i]+ref_KG_posteriors_P$Phenolics_Ref_std[i]*chemm$Ref_Min[which(chemm$Site=="KG_Magic" & chemm$Chemical=="Phenolics")])
+  
+max_pred_P <- exp(ref_KG_posteriors_P$X.Intercept.[i]+ref_KG_posteriors_P$Phenolics_Ref_std[i]*chemm$Ref_Max[which(chemm$Site=="KG_Magic" & chemm$Chemical=="Phenolics")])
+  
+predicted_diff_Phenolics_ref[i] <- max_pred_P-min_pred_P # This is the difference we will store. feel free to reverse the order here, depending on what you want to report.
+}  
+
+quantile(predicted_diff_Phenolics_ref,c(0.025,0.5,0.975)) 
+#      2.5%        50%      97.5% 
+#-13.584453  -8.652583  -4.170438   
+
+# Monoterpenes
+for(i in 1:ncol(ref_KG_posteriors_M)){
+
+# This is just an intercept + slope*x. exp ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_M <- exp(ref_KG_posteriors_M$X.Intercept.[i]+ref_KG_posteriors_M$Monoterpenes_Ref_std[i]*chemm$Ref_Min[which(chemm$Site=="KG_Magic" & chemm$Chemical=="Monoterpenes")])
+  
+max_pred_M <- exp(ref_KG_posteriors_M$X.Intercept.[i]+ref_KG_posteriors_M$Monoterpenes_Ref_std[i]*chemm$Ref_Max[which(chemm$Site=="KG_Magic" & chemm$Chemical=="Monoterpenes")])
+  
+predicted_diff_Monoterpenes_ref[i]<- max_pred_M-min_pred_M # This is the difference we will store. feel free to reverse the order here, depending on what you want to report.
+}  
+
+quantile(predicted_diff_Monoterpenes_ref,c(0.025,0.5,0.975)) 
+#      2.5%        50%      97.5% 
+#-17.672075  -6.605915  -1.431594 
+
+# CP
+
+for(i in 1:ncol(ref_KG_posteriors_CP)){
+
+# This is just an intercept + slope*x. exp ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_CP <- exp(ref_KG_posteriors_CP$X.Intercept.[i]+ref_KG_posteriors_CP$CP_Ref_std[i]*chemm$Ref_Min[which(chemm$Site=="KG_Magic" & chemm$Chemical=="Crude Protein")])
+  
+max_pred_CP <- exp(ref_KG_posteriors_CP$X.Intercept.[i]+ref_KG_posteriors_CP$CP_Ref_std[i]*chemm$Ref_Max[which(chemm$Site=="KG_Magic" & chemm$Chemical=="Crude Protein")])
+  
+predicted_diff_cp_ref[i] <- max_pred_CP-min_pred_CP #This is the difference we will store. 
+  }  
+
+quantile(predicted_diff_cp_ref,c(0.025,0.5,0.975)) 
+#      2.5%        50%      97.5% 
+#  14.45729  49.17426 159.41638
+
+```
+
+# Effect Size Min & Max - Predicted Chemistry
+
+```{r}
+
+# Referencing min and max from data frame
+chemm$Pred_Min[which(chemm$Site=="KG_Magic" & chemm$Chemical=="Crude Protein")] #-1.34902
+chemm$Pred_Max[which(chemm$Site=="KG_Magic" & chemm$Chemical=="Crude Protein")] #2.00042
+
+# Setting up an empty vector to fill in with predictions
+predicted_diff_cp_pred <- rep(NA,times=ncol(pred_KG_posteriors_CP))
+predicted_diff_Monoterpenes_pred <- rep(NA,times=ncol(pred_KG_posteriors_M))
+predicted_diff_Phenolics_pred <- rep(NA,times=ncol(pred_KG_posteriors_P))
+
+# Phenolics
+for(i in 1:ncol(pred_KG_posteriors_P)){
+
+# This is just an intercept + slope*x. exp ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_P <- exp(pred_KG_posteriors_P$X.Intercept.[i]+pred_KG_posteriors_P$Phenolics_Pred_std[i]*chemm$Pred_Min[which(chemm$Site=="KG_Magic" & chemm$Chemical=="Phenolics")])
+  
+max_pred_P <- exp(pred_KG_posteriors_P$X.Intercept.[i]+pred_KG_posteriors_P$Phenolics_Pred_std[i]*chemm$Pred_Max[which(chemm$Site=="KG_Magic" & chemm$Chemical=="Phenolics")])
+  
+predicted_diff_Phenolics_pred[i] <- max_pred_P-min_pred_P # This is the difference we will store. 
+}  
+
+quantile(predicted_diff_Phenolics_pred,c(0.025,0.5,0.975)) 
+#      2.5%        50%      97.5% 
+#-6.0048006  0.1607879  5.3396647 
+
+
+# Monoterpenes
+for(i in 1:ncol(pred_KG_posteriors_M)){
+
+# This is just an intercept + slope*x. exp ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_M <- exp(pred_KG_posteriors_M$X.Intercept.[i]+pred_KG_posteriors_M$Monoterpenes_Pred_std[i]*chemm$Pred_Min[which(chemm$Site=="KG_Magic" & chemm$Chemical=="Monoterpenes")])
+  
+max_pred_M <- exp(pred_KG_posteriors_M$X.Intercept.[i]+pred_KG_posteriors_M$Monoterpenes_Pred_std[i]*chemm$Pred_Max[which(chemm$Site=="KG_Magic" & chemm$Chemical=="Monoterpenes")])
+  
+predicted_diff_Monoterpenes_pred[i] <- max_pred_M-min_pred_M # This is the difference we will store. 
+}  
+
+quantile(predicted_diff_Monoterpenes_pred,c(0.025,0.5,0.975)) 
+#       2.5%         50%       97.5% 
+#-60.517659 -16.111058  -3.653675 
+
+# CP
+for(i in 1:ncol(pred_KG_posteriors_CP)){
+
+# This is just an intercept + slope*x. exp ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_CP <-exp(pred_KG_posteriors_CP$X.Intercept.[i]+pred_KG_posteriors_CP$CP_Pred_std[i]*chemm$Pred_Min[which(chemm$Site=="KG_Magic" & chemm$Chemical=="Crude Protein")])
+  
+max_pred_CP <- exp(pred_KG_posteriors_CP$X.Intercept.[i]+pred_KG_posteriors_CP$CP_Pred_std[i]*chemm$Pred_Max[which(chemm$Site=="KG_Magic" & chemm$Chemical=="Crude Protein")])
+  
+predicted_diff_cp_pred[i]<-max_pred_CP-min_pred_CP # This is the difference we will store. 
+  }  
+
+quantile(predicted_diff_cp_pred,c(0.025,0.5,0.975)) 
+#     2.5%       50%     97.5% 
+ #5.447717 32.567988 75.554162 
+
+```
+
+

@@ -1,0 +1,282 @@
+---
+title: "Counterfactuals"
+author: "Stephanie Galla"
+date: "2023-06-02"
+output: html_document
+---
+
+## Input libraries
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#Load libraries
+library("rprojroot")
+library("loo")
+library("rstanarm")
+options(mc.cores = parallel::detectCores())
+library("ggplot2")
+library("bayesplot")
+theme_set(bayesplot::theme_default(base_family = "sans"))
+library("MASS")
+library("lme4")
+library("brms")
+library("rstanarm")
+```
+
+## Create counterfactual function and load data
+```{r}
+
+nameo<-list.files()[-1]
+
+#all chemicals
+chemmm <- read.csv("../Text_Chemistry_Mins_Max_16Nov2025.csv", header=TRUE)
+
+#Test run with Craters and CP
+load("../Craters_Jan2026/mREF_Craters_single_CP.Rdata")
+
+#Create a counterfactual, based on Craters and CP
+counterfactual<-function(model,what_chem="CP",what_type="Ref",maino="Craters",colo="blue2"){
+
+if(what_type=="Ref"){
+  chem_col=c(4,5)
+}
+  
+  else{(chem_col=c(6,7))}
+  
+
+chem_row=which(chemmm$Chemm==what_chem & chemmm$Site==maino)
+
+mino=chemmm[chem_row,chem_col[1]]
+maxo=chemmm[chem_row,chem_col[2]]
+  
+what=paste(what_chem,"_",what_type,"_std",sep="")
+  
+pos_draws=as.data.frame(model)[,c("(Intercept)",what)]
+
+CP_refs<-seq(from=mino,to=maxo,by=0.01)
+
+pred_mat<-matrix(NA,nrow=nrow(pos_draws),ncol=length(CP_refs))
+
+for(i in 1:nrow(pos_draws)){
+  for(j in 1:length(CP_refs)){
+
+  if(model$glmod$family$link=="logit"){
+    pred_mat[i,j]<-plogis(pos_draws[i,1]+pos_draws[i,2]*CP_refs[j])}
+    else{pred_mat[i,j]<-exp(pos_draws[i,1]+pos_draws[i,2]*CP_refs[j])}
+  }
+}
+
+predCI<-apply(pred_mat,2,quantile,c(0.025,0.5,0.975))
+
+if(model$glmod$family$link=="logit"){
+  
+plot(predCI[2,]~CP_refs,type="l",lwd=5,xlab=c("Crude Proteins"),
+     ylab=c("Probability of a bite"),main=maino,ylim=c(min(predCI),max(predCI)))
+}else{
+  
+  plot(predCI[2,]~CP_refs,type="l",lwd=5,xlab=c("Crude Proteins"),
+       ylab=c("Number of bites"),main=maino,ylim=c(min(predCI),max(predCI)))
+}
+
+polygon(x=c(rev(CP_refs),CP_refs),
+        y=c(rev(predCI[3,]),
+            predCI[1,]),col=colo)
+
+
+lines(predCI[2,]~CP_refs,lwd=5)
+return(predCI)
+}
+
+#Load data
+
+load("../Craters_Jan2026/mREF_Craters_single_CP.Rdata")
+load("../Cedar_June2026/mREF_Cedar_single_CP.Rdata")
+load("../JN_Jan2026/mREF_JN_Magic_single_CP.Rdata")
+load("../RR_Jan2026/mREF_RR_single_CP.Rdata")
+load("../KG_Jan2026/mREF_KG_Magic_single_CP.Rdata")
+load("../Craters_Jan2026/mREF_Craters_single_M.Rdata")
+load("../Cedar_June2026/mREF_Cedar_single_M.Rdata")
+load("../JN_Jan2026/mREF_JN_Magic_single_M.Rdata")
+load("../RR_Jan2026/mREF_RR_single_M.Rdata")
+load("../KG_Jan2026/mREF_KG_Magic_single_M.Rdata")
+load("../Craters_Jan2026/mREF_Craters_single_P.Rdata")
+load("../Cedar_June2026/mREF_Cedar_single_P.Rdata")
+load("../JN_Jan2026/mREF_JN_Magic_single_P.Rdata")
+load("../RR_Jan2026/mREF_RR_single_P.Rdata")
+load("../KG_Jan2026/mREF_KG_Magic_single_P.Rdata")
+
+load("../Craters_Jan2026/mPRED_Craters_single_CP.Rdata")
+load("../Cedar_June2026/mPRED_Cedar_single_CP.Rdata")
+load("../JN_Jan2026/mPRED_JN_Magic_single_CP.Rdata")
+load("../RR_Jan2026/mPRED_RR_single_CP.Rdata")
+load("../KG_Jan2026/mPRED_KG_Magic_single_CP.Rdata")
+load("../Craters_Jan2026/mPRED_Craters_single_M.Rdata")
+load("../Cedar_June2026/mPRED_Cedar_single_M.Rdata")
+load("../JN_Jan2026/mPRED_JN_Magic_single_M.Rdata")
+load("../RR_Jan2026/mPRED_RR_single_M.Rdata")
+load("../KG_Jan2026/mPRED_KG_Magic_single_M.Rdata")
+load("../Craters_Jan2026/mPRED_Craters_single_P.Rdata")
+load("../Cedar_June2026//mPRED_Cedar_single_P.Rdata")
+load("../JN_Jan2026/mPRED_JN_Magic_single_P.Rdata")
+load("../RR_Jan2026/mPRED_RR_single_P.Rdata")
+load("../KG_Jan2026/mPRED_KG_Magic_single_P.Rdata")
+
+##CRUDE PROTEINS
+
+#Reference
+
+par(mar=c(3,3,3,1))
+par(mfrow=c(1,5))
+
+png("crats_ref_CP.png", width = 800, height = 600)
+crats_ref_CP<-counterfactual(mREF_Craters_single_CP,maino="Craters",colo=rgb(0.596,0.96,1,0.4))
+dev.off()
+
+png("cedar_ref_CP.png", width = 800, height = 600)
+cedar_ref_CP<-counterfactual(mREF_Cedar_single_CP,what_chem="CP",what_type="Ref",maino="Cedar",colo=rgb(0.1,0.96,1,0.4))
+dev.off()
+
+png("JN_Magic_ref_CP.png", width = 800, height = 600)
+JN_Magic_ref_CP<-counterfactual(mREF_JN_Magic_single_CP,what_chem="CP",what_type="Ref",maino="JN_Magic",colo=rgb(0.596,0.1,1,0.4))
+dev.off()
+
+png("RR_ref_CP.png", width = 800, height = 600)
+RR_ref_CP<-counterfactual(mREF_RR_single_CP,maino="RR",what_chem="CP",what_type="Ref",colo=rgb(0.596,0.96,0.1,0.4))
+dev.off()
+
+png("KG_ref_CP.png", width = 800, height = 600)
+KG_ref_CP<-counterfactual(mREF_KG_Magic_single_CP,what_chem="CP",what_type="Ref",maino="KG_Magic",colo=rgb(0.1,0.96,1,0.4))
+dev.off()
+
+#Predicted
+
+par(mar=c(3,3,3,1))
+par(mfrow=c(1,5))
+
+png("crats_pred_CP.png", width = 800, height = 600)
+crats_pred_CP<-counterfactual(mPRED_Craters_single_CP,what_chem="CP",what_type="Pred",maino="Craters",colo=rgb(0.596,0.96,1,0.4))
+dev.off()
+
+png("cedar_pred_CP.png", width = 800, height = 600)
+cedar_pred_CP<-counterfactual(mPRED_Cedar_single_CP,what_chem="CP",what_type="Pred",maino="Cedar",colo=rgb(0.1,0.96,1,0.4))
+dev.off()
+
+png("JN_Magic_pred_CP.png", width = 800, height = 600)
+JN_Magic_pred_CP<-counterfactual(mPRED_JN_Magic_single_CP,what_chem="CP",what_type="Pred",maino="JN_Magic",colo=rgb(0.596,0.1,1,0.4))
+dev.off()
+
+png("RR_pred_CP.png", width = 800, height = 600)
+RR_pred_CP<-counterfactual(mPRED_RR_single_CP,what_chem="CP",what_type="Pred",maino="RR",colo=rgb(0.596,0.96,0.1,0.4))
+dev.off()
+
+png("KG_pred_CP.png", width = 800, height = 600)
+KG_pred_CP<-counterfactual(mPRED_KG_Magic_single_CP,what_chem="CP",what_type="Pred",maino="KG_Magic",colo=rgb(0.1,0.96,1,0.4))
+dev.off()
+
+##PHENOLICS
+
+#Reference
+
+par(mar=c(3,3,3,1))
+par(mfrow=c(1,5))
+
+png("crats_Ref_Phen.png", width = 800, height = 600)
+crats_Ref_Phen<-counterfactual(mREF_Craters_single_P,what_chem="Phenolics",what_type="Ref",maino="Craters",colo=rgb(0.596,0.96,1,0.4))
+dev.off()
+
+png("cedar_Ref_Phen.png", width = 800, height = 600)
+cedar_Ref_Phen<-counterfactual(mREF_Cedar_single_P,what_chem="Phenolics",what_type="Ref",maino="Cedar",colo=rgb(0.1,0.96,1,0.4))
+dev.off()
+
+png("JN_Magic_Ref_Phen.png", width = 800, height = 600)
+JN_Magic_Ref_Phen<-counterfactual(mREF_JN_Magic_single_P,what_chem="Phenolics",what_type="Ref",maino="JN_Magic",colo=rgb(0.596,0.1,1,0.4))
+dev.off()
+
+png("RR_Ref_Phen.png", width = 800, height = 600)
+RR_Ref_Phen<-counterfactual(mREF_RR_single_P,maino="RR",what_chem="Phenolics",what_type="Ref",colo=rgb(0.596,0.96,0.1,0.4))
+dev.off()
+
+png("KG_Magic_Ref_Phen.png", width = 800, height = 600)
+KG_Ref_Phen<-counterfactual(mREF_KG_Magic_single_P,what_chem="Phenolics",what_type="Ref",maino="KG_Magic",colo=rgb(0.1,0.96,1,0.4))
+dev.off()
+
+#Predicted
+
+par(mar=c(3,3,3,1))
+par(mfrow=c(1,5))
+
+png("crats_Pred_Phen.png", width = 800, height = 600)
+crats_Pred_Phen<-counterfactual(mPRED_Craters_single_P,what_chem="Phenolics",what_type="Pred",maino="Craters",colo=rgb(0.596,0.96,1,0.4))
+dev.off()
+
+png("cedar_Pred_Phen.png", width = 800, height = 600)
+cedar_Pred_Phen<-counterfactual(mPRED_Cedar_single_P,what_chem="Phenolics",what_type="Pred",maino="Cedar",colo=rgb(0.1,0.96,1,0.4))
+dev.off()
+
+png("JN_Magic_Pred_Phen.png", width = 800, height = 600)
+JN_Magic_Pred_Phen<-counterfactual(mPRED_JN_Magic_single_P,what_chem="Phenolics",what_type="Pred",maino="JN_Magic",colo=rgb(0.596,0.1,1,0.4))
+dev.off()
+
+png("RR_Pred_Phen.png", width = 800, height = 600)
+RR_Pred_Phen<-counterfactual(mPRED_RR_single_P,what_chem="Phenolics",what_type="Pred",maino="RR",colo=rgb(0.596,0.96,0.1,0.4))
+dev.off()
+
+png("KG_Pred_Phen.png", width = 800, height = 600)
+KG_Pred_Phen<-counterfactual(mPRED_KG_Magic_single_P,what_chem="Phenolics",what_type="Pred",maino="KG_Magic",colo=rgb(0.1,0.96,1,0.4))
+dev.off()
+
+##MONOTERPENES
+
+#Reference
+
+par(mar=c(3,3,3,1))
+par(mfrow=c(1,5))
+
+png("crats_Ref_Mono.png", width = 800, height = 600)
+crats_Ref_Mono<-counterfactual(mREF_Craters_single_M,what_chem="Monoterpenes",what_type="Ref",maino="Craters",colo=rgb(0.596,0.96,1,0.4))
+dev.off()
+
+png("cedar_Ref_Mono.png", width = 800, height = 600)
+cedar_Ref_Mono<-counterfactual(mREF_Cedar_single_M,what_chem="Monoterpenes",what_type="Ref",maino="Cedar",colo=rgb(0.1,0.96,1,0.4))
+dev.off()
+
+png("JN_Magic_Ref_Mon.png", width = 800, height = 600)
+JN_Magic_Ref_Mono<-counterfactual(mREF_JN_Magic_single_M,what_chem="Monoterpenes",what_type="Ref",maino="JN_Magic",colo=rgb(0.596,0.1,1,0.4))
+dev.off()
+
+png("RR_Ref_Mono.png", width = 800, height = 600)
+RR_Ref_Mono<-counterfactual(mREF_RR_single_M,maino="RR",what_chem="Monoterpenes",what_type="Ref",colo=rgb(0.596,0.96,0.1,0.4))
+dev.off()
+
+png("KG_Ref_Mono.png", width = 800, height = 600)
+KG_Ref_Mono<-counterfactual(mREF_KG_Magic_single_M,what_chem="Monoterpenes",what_type="Ref",maino="KG_Magic",colo=rgb(0.1,0.96,1,0.4))
+dev.off()
+
+#Predicted
+
+par(mar=c(3,3,3,1))
+par(mfrow=c(1,5))
+
+png("crats_Pred_Mono.png", width = 800, height = 600)
+crats_Pred_Mono<-counterfactual(mPRED_Craters_single_M,what_chem="Monoterpenes",what_type="Pred",maino="Craters",colo=rgb(0.596,0.96,1,0.4))
+dev.off()
+
+png("cedar_Pred_Mono.png", width = 800, height = 600)
+cedar_Pred_Mono<-counterfactual(mPRED_Cedar_single_M,what_chem="Monoterpenes",what_type="Pred",maino="Cedar",colo=rgb(0.1,0.96,1,0.4))
+dev.off()
+
+png("JN_Pred_Mono.png", width = 800, height = 600)
+JN_Magic_Pred_Mono<-counterfactual(mPRED_JN_Magic_single_M,what_chem="Monoterpenes",what_type="Pred",maino="JN_Magic",colo=rgb(0.596,0.1,1,0.4))
+dev.off()
+
+png("RR_Pred_Mono.png", width = 800, height = 600)
+RR_Pred_Mono<-counterfactual(mPRED_RR_single_M,what_chem="Monoterpenes",what_type="Pred",maino="RR",colo=rgb(0.596,0.96,0.1,0.4))
+dev.off()
+
+png("KG_Pred_Mono.png", width = 800, height = 600)
+KG_Pred_Mono<-counterfactual(mPRED_KG_Magic_single_M,what_chem="Monoterpenes",what_type="Pred",maino="KG_Magic",colo=rgb(0.1,0.96,1,0.4))
+dev.off()
+
+#
+```
+

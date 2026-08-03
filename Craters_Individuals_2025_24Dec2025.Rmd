@@ -1,0 +1,870 @@
+---
+title: "Chapter 2 - Bite Data - Chemistry - Predicted Chemistry at Craters Site"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+This R Markdown file will input data for the Craters site and prepare it for three downstream analyses determining the effects of chemistry and predicted chemistry on bite data.
+
+Craters is a Greater Sage-grouse site that sampled using a stratified random (within patch boundary) using 3 plants for each morphotype (size + species) for browsed and unbrowsed plants at each patch pooled into each sample. All samples were pooled for chemistry per morphotype, but bite mark data exists for individual plants through Marcella's data. Data was collected in Winter only. There is an upper limit of 50 bites for some of these individuals, so proportional data was used with an upper limit of 50. A binomial distribution was used to analyze this data set.
+
+# Input libraries
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#Load libraries
+library("rprojroot")
+library("loo")
+library("rstanarm")
+options(mc.cores = parallel::detectCores())
+library("ggplot2")
+library("bayesplot")
+theme_set(bayesplot::theme_default(base_family = "sans"))
+library("MASS")
+library("lme4")
+library("brms")
+
+```
+
+# Functions
+
+These functions are used throughout the markdown, and include ways for evaluating predictive error and standardizing the inputs. 
+
+## Root mean square error (RSME)
+This shows the difference between an estimator and the values observed, and provides a measure of accuracy.
+
+## Mean absolute error (MAE)
+This is a measure of errors between paired observations expressing the same phenomenon, and is one of a number of ways of comparing forecasts with their eventual outcomes.
+
+## Residual sum of squares (RSS)
+This is a measure of discrepancy between the data (x) and the model (d). A small value indicates a good fit between the data and the model (0 is a perfect fit). This number can be infinite, as far as I'm aware.
+
+## Total sum of squares (TSS)
+
+This is the explained sum of squares plus the RSS. 
+
+## R2
+
+The proportion of variance explained by the model out of the total variance in the data (0-1). Closer to one means 100% fit. 
+
+## splt
+
+Tidies up the data by removing the double names
+
+## stdize
+
+Putting all of the covariates on the same scale 
+http://www.stat.columbia.edu/~gelman/research/published/standardizing7.pdf
+
+```{r}
+# This first function is for root mean square, where m is the model predictions, and x is the data.
+rmse <- function(m,x) 
+{
+  sqrt(mean((x-m)^2,na.rm=T))
+}
+
+# This function is for mean absolute error, where m is the model predictions, and x is the data. 
+mae <- function(m,x)
+{
+  mean(abs(((x-m))),na.rm=T)
+}
+
+# This function is for residual sum of squares
+RSS <- function(m,x) 
+{
+  sum((((m))-(x))^2)
+}
+
+# This function is for total sum of squares
+TSS <- function(x) 
+{
+  sum(((x)-(mean(x)))^2)
+  }
+
+R2<-function(m,x,logo=F) {
+  mors<-na.omit(data.frame(m,x))
+  m<-mors$m
+  x<-mors$x
+  
+  if(logo==F) {return(1-RSS(m,x)/TSS(x))} else {return(1-RSS1(m,x)/TSS1(x))}
+}
+
+# Split names
+splt=function(x,split,num) {
+  
+  x<-as.character(x)
+  p1=strsplit(x,split=split,fixed=T)
+  p2=unlist(lapply(p1,"[",num))
+  return(p2)
+}
+
+# Standardize covariates
+stdize<-function(x) {(x-mean(x,na.rm=T))/(2*sd(x,na.rm=T))}
+```
+
+# Read in Files
+
+Note, we are using a binomial distribution for bite data here. This will have to be done with pooled samples. 
+
+```{r}
+# Main data set that includes all the sites, chemotype levels. We're setting periods and blank spaces to read in to R as NA:
+Phenolics <- read.csv("Phenolics.csv", na.strings=c("."," ","","NA"))
+Monoterpenes <- read.csv("Monoterpenes.csv", na.strings=c("."," ","","NA"))
+Crude_Protein <- read.csv("Crude_protein.csv", na.strings=c("."," ","","NA"))
+
+# Subset datasets to Craters sites:
+Craters_P <-subset(Phenolics,Phenolics$Site=="Craters") 
+Craters_M <-subset(Monoterpenes, Monoterpenes$Site=="Craters") 
+Craters_CP <-subset(Crude_Protein,Crude_Protein$Site=="Craters") 
+
+# Individual plants, contains bite data from individual plants
+mbites<-read.csv("marcella_bites.csv",na.strings=c("."," ","","NA"))
+
+# Define the number of trials for the binomial distribution
+mbites$bites_binomial<-ifelse(mbites$bite_marks>50,50,mbites$bite_marks)
+
+# Additional lines to process and make sure the data is not characters or no-integer data or anything like that
+bite_out<-mbites[which(is.na(mbites$bites_binomial)==F),]
+mbit<-mbites[which(is.na(bite_out$Sample)==F),]
+
+# The sample is the unique identifier for individual plants, so we can merge using this
+# Merging together Marcella's data (raw bites) and Brecken's data (average bites, but values for chemistry)
+craters_P <- merge(Craters_P,mbit,by.x="Sample",by.y="Sample") 
+craters_M <- merge(Craters_M,mbit,by.x="Sample",by.y="Sample")
+craters_CP <- merge(Craters_CP,mbit,by.x="Sample",by.y="Sample")
+
+## Check out the dimensions of the input data:
+# Bites
+length(craters_P$bites_binomial) #256
+table(craters_P$bites_binomial)
+
+length(craters_M$bites_binomial) #260
+table(craters_M$bites_binomial)
+
+length(craters_CP$bites_binomial) #260
+table(craters_CP$bites_binomial)
+
+# Season #This site is winter only
+table(craters_P$Season) #winter 256
+table(craters_M$Season) #winter 260
+table(craters_CP$Season) #winter 260
+
+# Species
+table(craters_P$Species) # 3-tip 75 hybrid 3 wyoming 178 
+table(craters_M$Species) # 3-tip 75 hybrid 4 wyoming 181 
+table(craters_CP$Species) #3-tip 75 hybrid 4 wyoming 181 
+
+# Plant height 
+table(craters_P$PlantSize) # large 60 medium 172  small 24 
+table(craters_M$PlantSize) # large 61 medium 175  small 24 
+table(craters_CP$PlantSize) # large 61 medium 175  small 24 
+
+# Patch Type
+table(craters_P$PatchType.x) # random 99 used 157
+table(craters_M$PatchType.x) # random 100 used 160
+table(craters_CP$PatchType.x) # random 100 used 160
+
+# Patch_ID here is the random effect
+table(craters_P$Patch_ID.x)[-which(table(craters_P$Patch_ID.x)==0)] #named integer(0)
+table(craters_M$Patch_ID.x)[-which(table(craters_M$Patch_ID.x)==0)] #named integer(0)
+table(craters_CP$Patch_ID.x)[-which(table(craters_CP$Patch_ID.x)==0)] #named integer(0)
+
+# Standardize our covariates
+stdize<-function(x) {(x-mean(x,na.rm=TRUE))/(2*sd(x,na.rm=TRUE))}
+
+craters_P$Phenolics_Pred_std<-stdize(craters_P$Phenolics_newpred)
+craters_M$Monoterpenes_Pred_std<-stdize(craters_M$Monoterpenes_newpred)
+craters_CP$CP_Pred_std<-stdize(craters_CP$CP_newpred)
+
+craters_P$Phenolics_Ref_std<-stdize(craters_P$Phenolics_Ref)
+craters_M$Monoterpenes_Ref_std<-stdize(craters_M$Monoterpenes_Ref)
+craters_CP$CP_Ref_std<-stdize(craters_CP$CP_Ref)
+
+#Make Patch_ID into a factor 
+craters_P$Patch_ID <- droplevels(as.factor(paste("p",craters_P$Patch_ID.x,sep="_")))
+craters_M$Patch_ID <- droplevels(as.factor(paste("p",craters_M$Patch_ID.x,sep="_")))
+craters_CP$Patch_ID <- droplevels(as.factor(paste("p",craters_CP$Patch_ID.x,sep="_")))
+
+craters_P_use<-na.omit(data.frame(Bites=craters_P$bites_binomial,PatchType=craters_P$Patch_ID,Phenolics_Pred_std=craters_P$Phenolics_Pred_std,Patch_ID=craters_P$Patch_ID,Phenolics_Ref_std=craters_P$Phenolics_Ref_std))
+
+craters_M_use<-na.omit(data.frame(Bites=craters_M$bites_binomial,PatchType=craters_M$Patch_ID,Monoterpenes_Pred_std=craters_M$Monoterpenes_Pred_std,Patch_ID=craters_M$Patch_ID, Monoterpenes_Ref_std=craters_M$Monoterpenes_Ref_std))
+
+craters_CP_use<-na.omit(data.frame(Bites=craters_CP$bites_binomial,CP_Pred_std=craters_CP$CP_Pred_std,PatchType=craters_CP$Patch_ID,Patch_ID=craters_CP$Patch_ID,CP_Ref_std=craters_CP$CP_Ref_std))
+                                
+# Creating a proportional variable to help visualize the data
+craters_P_use$bprop<-craters_P_use$Bites/50 #since 50 is the max
+craters_M_use$bprop<-craters_M_use$Bites/50 #since 50 is the max
+craters_CP_use$bprop<-craters_CP_use$Bites/50 #since 50 is the max
+
+# This is a how binomial proportional data are read into R
+# This is creating a matrix with the two important details for binomial regression the number of 
+#successes and the number of failures. 
+craters_bound_P <- cbind(craters_P_use$Bites,50-craters_P_use$Bites)
+craters_P_use$craters_bound_P <- craters_bound_P
+
+craters_bound_M <- cbind(craters_M_use$Bites,50-craters_M_use$Bites)
+craters_M_use$craters_bound_M <- craters_bound_M
+
+craters_bound_CP <- cbind(craters_CP_use$Bites,50-craters_CP_use$Bites)
+craters_CP_use$craters_bound_CP <- craters_bound_CP
+
+## Check out the dimensions of the final data:
+# Bites
+length(craters_P_use$Bites) #256
+table(craters_P_use$Bites)
+
+length(craters_M_use$Bites) #260
+table(craters_M_use$Bites)
+
+length(craters_CP_use$Bites) #260
+table(craters_CP_use$Bites)
+
+#Bites Bound
+length(craters_P_use$craters_bound_P) #512
+table(craters_P_use$craters_bound_P)
+
+length(craters_M_use$craters_bound_M) #520
+table(craters_M_use$craters_bound_M)
+
+length(craters_CP_use$craters_bound_CP) #520
+table(craters_CP_use$craters_bound_CP)
+
+# Patch type
+table(craters_P_use$PatchType)
+table(craters_M_use$PatchType)
+table(craters_CP_use$PatchType)
+# Patch type is now patch ID
+
+# Mins and Maxes
+
+min(craters_P_use$Phenolics_Ref_std) #-0.3670786
+max(craters_P_use$Phenolics_Ref_std) #2.314344
+min(craters_P_use$Phenolics_Pred_std) #-1.21205
+max(craters_P_use$Phenolics_Pred_std) #1.124008
+
+min(craters_M_use$Monoterpenes_Ref_std) #-0.8018102
+max(craters_M_use$Monoterpenes_Ref_std) #1.489232
+min(craters_M_use$Monoterpenes_Pred_std) #-0.9515278
+max(craters_M_use$Monoterpenes_Pred_std) #1.340528
+
+min(craters_CP_use$CP_Ref_std) #-0.9465833
+max(craters_CP_use$CP_Ref_std) #1.030761
+min(craters_CP_use$CP_Pred_std) #-1.144643
+max(craters_CP_use$CP_Pred_std) #1.173767
+
+##Descriptive Stats
+
+# Phenolics
+mean(craters_P$Phenolics_Ref, na.rm=TRUE) #15.70203
+sd(craters_P$Phenolics_Ref, na.rm=TRUE) #20.88179
+mean(craters_P$Phenolics_newpred, na.rm=TRUE) #23.64035
+sd(craters_P$Phenolics_newpred, na.rm=TRUE) #18.67058
+
+mean(craters_P_use$Phenolics_Ref_std, na.rm=TRUE) #8.023096e-18
+sd(craters_P_use$Phenolics_Ref_std, na.rm=TRUE) #0.5
+mean(craters_P_use$Phenolics_Pred_std, na.rm=TRUE) #-8.84709e-17
+sd(craters_P_use$Phenolics_Pred_std, na.rm=TRUE) #0.5
+
+# Monoterpenes
+mean(craters_M$Monoterpenes_Ref, na.rm=TRUE) #775.2057
+sd(craters_M$Monoterpenes_Ref, na.rm=TRUE) #221.1397
+mean(craters_M$Monoterpenes_newpred, na.rm=TRUE) #664.2266
+sd(craters_M$Monoterpenes_newpred, na.rm=TRUE) #162.703
+
+mean(craters_M_use$Monoterpenes_Ref_std, na.rm=TRUE) #-1.479586e-16
+sd(craters_M_use$Monoterpenes_Ref_std, na.rm=TRUE) #0.5
+mean(craters_M_use$Monoterpenes_Pred_std, na.rm=TRUE) #-2.006942e-16
+sd(craters_M_use$Monoterpenes_Pred_std, na.rm=TRUE) #0.5
+
+#Crude Proteins
+
+mean(craters_CP$CP_Ref, na.rm=TRUE) #12.39462
+sd(craters_CP$CP_Ref, na.rm=TRUE) #1.84591
+mean(craters_CP$CP_newpred, na.rm=TRUE) #12.38399
+sd(craters_CP$CP_newpred, na.rm=TRUE) #1.783406
+
+mean(craters_CP_use$CP_Ref_std, na.rm=TRUE) #2.305848e-17
+sd(craters_CP_use$CP_Ref_std, na.rm=TRUE) #0.5
+mean(craters_CP_use$CP_Pred_std, na.rm=TRUE) #3.416071e-18
+sd(craters_CP_use$CP_Pred_std, na.rm=TRUE) #0.5
+
+```
+
+# Question 1: what are the effects of chemistry on bites?
+
+```{r}
+
+mREF_Craters_single_P <- rstanarm::stan_glmer(craters_bound_P~Phenolics_Ref_std+(1|Patch_ID),data=craters_P_use,cores=4,family="binomial",iter=10000)
+
+mREF_Craters_single_M <- rstanarm::stan_glmer(craters_bound_M~Monoterpenes_Ref_std+(1|Patch_ID),data=craters_M_use,cores=4,family="binomial",iter=10000)
+
+mREF_Craters_single_CP <- rstanarm::stan_glmer(craters_bound_CP~CP_Ref_std+(1|Patch_ID),data=craters_CP_use,cores=4,family="binomial",iter=10000)
+
+png(file="./Craters_Reference_P.png")
+summary(mREF_Craters_single_P)
+plot(mREF_Craters_single_P,regex_pars="_std")
+dev.off()
+save(mREF_Craters_single_P,file="mREF_Craters_single_P.Rdata")
+
+png(file="./Craters_Reference_M.png")
+summary(mREF_Craters_single_M)
+plot(mREF_Craters_single_M,regex_pars="_std")
+dev.off()
+save(mREF_Craters_single_M,file="mREF_Craters_single_M.Rdata")
+
+png(file="./Craters_Reference_CP.png")
+summary(mREF_Craters_single_CP)
+plot(mREF_Craters_single_CP,regex_pars="_std")
+dev.off()
+save(mREF_Craters_single_CP,file="mREF_Craters_single_CP.Rdata")
+
+##############
+# Extract posteriors
+
+Craters_single_REF_P <- as.data.frame(mREF_Craters_single_P)
+Phenolics_out <- Craters_single_REF_P$Phenolics_Ref_std
+Phenolics_REF_cat <- rep("Phenolics_REF",times=length(Phenolics_out))
+
+Craters_single_REF_M <- as.data.frame(mREF_Craters_single_M)
+Monoterpenes_out <- Craters_single_REF_M$Monoterpenes_Ref_std
+Monoterpenes_REF_cat <- rep("Monoterpenes_REF",times=length(Monoterpenes_out))
+
+Craters_single_REF_CP <- as.data.frame(mREF_Craters_single_CP)
+CP_out <- Craters_single_REF_CP$CP_Ref_std
+CP_REF_cat <- rep("CP_REF",times=length(CP_out))
+
+pos_draws <- c(Phenolics_out,CP_out,Monoterpenes_out)
+
+chem_type <- c(Phenolics_REF_cat,CP_REF_cat,Monoterpenes_REF_cat)
+
+Craters_single_REF <- data.frame(pos_draws,chem_type)
+
+Craters_single_REF$Site<-rep("Craters",times=nrow(Craters_single_REF))
+
+save(Craters_single_REF,file = "Craters_single_REF.Rdata")
+
+```
+
+# Question 2: does inference on chemistry effects change when using predicted, rather than observed values?
+
+```{r}
+
+mPRED_Craters_single_P <- rstanarm::stan_glmer(craters_bound_P~Phenolics_Pred_std +(1|Patch_ID),data=craters_P_use,cores=4,family="binomial",iter=10000)
+
+mPRED_Craters_single_M <- rstanarm::stan_glmer(craters_bound_M~Monoterpenes_Pred_std +(1|Patch_ID),data=craters_M_use,cores=4,family="binomial",iter=10000)
+
+mPRED_Craters_single_CP <- rstanarm::stan_glmer(craters_bound_CP~CP_Pred_std +(1|Patch_ID),data=craters_CP_use,cores=4,family="binomial",iter=10000)
+
+png(file="./Craters_Predicted_P.png")
+summary(mPRED_Craters_single_P)
+plot(mPRED_Craters_single_P,regex_pars="Pred")
+save(mPRED_Craters_single_P,file="mPRED_Craters_single_P.Rdata")
+
+png(file="./Craters_Predicted_M.png")
+summary(mPRED_Craters_single_M)
+plot(mPRED_Craters_single_M,regex_pars="Pred")
+save(mPRED_Craters_single_M,file="mPRED_Craters_single_M.Rdata")
+
+png(file="./Craters_Predicted_CP.png")
+summary(mPRED_Craters_single_CP)
+plot(mPRED_Craters_single_CP,regex_pars="Pred")
+save(mPRED_Craters_single_CP,file="mPRED_Craters_single_CP.Rdata")
+
+##############
+# Extract posteriors
+
+Craters_single_PRED_P <- as.data.frame(mPRED_Craters_single_P)
+Phenolics_out <- Craters_single_PRED_P$Phenolics_Pred_std
+Phenolics_PRED_cat <- rep("Phenolics_PRED",times=length(Phenolics_out))
+
+Craters_single_PRED_M <- as.data.frame(mPRED_Craters_single_M)
+Monoterpenes_out <- Craters_single_PRED_M$Monoterpenes_Pred_std
+Monoterpenes_PRED_cat <- rep("Monoterpenes_PRED",times=length(Monoterpenes_out))
+
+Craters_single_PRED_CP <- as.data.frame(mPRED_Craters_single_CP)
+CP_out <- Craters_single_PRED_CP$CP_Pred_std
+CP_PRED_cat <- rep("CP_PRED",times=length(CP_out))
+
+pos_draws <- c(Phenolics_out,CP_out,Monoterpenes_out)
+
+chem_type <- c(Phenolics_PRED_cat,CP_PRED_cat,Monoterpenes_PRED_cat)
+
+Craters_single_PRED <- data.frame(pos_draws,chem_type)
+
+Craters_single_PRED$Site<-rep("Craters",times=nrow(Craters_single_PRED))
+
+save(Craters_single_PRED,file="Craters_single_PRED.Rdata")
+
+```
+
+#Question 3: how does the predictions changes when using obs vs predicted chemistry?
+
+#https://onlinelibrary.wiley.com/doi/full/10.1111/ecog.02881
+#paper that describes our leave-one-out approach
+
+```{r}
+
+############Phenolics
+
+# In this code, we are creating subsets of the data
+craters_levs_P <- unique(craters_P_use$Patch_ID)
+craters_in_P <- vector("list",length(craters_levs_P))
+craters_out_P <- vector("list",length(craters_levs_P))
+
+# We are testing three different models:
+# Model 1 is the observed chemistry
+# Model 2 is the predicted chemistry
+# Model 3 is a null model with no chemistry
+ref_preds_P <- vector("list",length(craters_levs_P))
+pred_preds_P <- vector("list",length(craters_levs_P))
+null_preds_P <- vector("list",length(craters_levs_P))
+
+for(i in 1:length(craters_levs_P)) 
+{
+
+  # Patch ID out, running the model, and predicting on the left out patch
+  
+  # Data use to fit the model
+  craters_in_P[[i]]<-craters_P_use[-which(craters_P_use$Patch_ID==craters_levs_P[i]),]
+  
+   # Data used to test the model
+  craters_out_P[[i]]<-craters_P_use[which(craters_P_use$Patch_ID==craters_levs_P[i]),]
+  
+  m0_Craters_P<-stan_glmer(craters_bound_P~1+(1|Patch_ID),data=craters_in_P[[i]],cores=4, family = "binomial", iter=10000)
+  
+  # Making predictions for the left out data
+  null_preds_P[[i]]=posterior_epred(m0_Craters_P,newdata=craters_out_P[[i]])
+  
+  mPred_Craters_P<-stan_glmer(craters_bound_P~Phenolics_Pred_std+(1|Patch_ID),data=craters_in_P[[i]],cores=4, family = "binomial", iter=10000)
+  
+  pred_preds_P[[i]]=posterior_epred(mPred_Craters_P,newdata=craters_out_P[[i]])
+  
+  mREF_Craters_P<-stan_glmer(craters_bound_P~Phenolics_Ref_std+(1|Patch_ID),data=craters_in_P[[i]],cores=4, family = "binomial", iter=10000)
+  
+  ref_preds_P[[i]]<-posterior_epred(mREF_Craters_P,newdata=craters_out_P[[i]])
+  }
+
+null_preds_t_P <- t(null_preds_P)
+
+# Extracting the predictions
+# Binding the results together in a single data frame
+craters_logo_P<-vector("list",4)
+names(craters_logo_P)<-c("out_data","null","ref","pred")
+craters_logo_P[[1]]<-do.call("rbind",craters_out_P)
+craters_logo_P[[2]]<-t(do.call("cbind",null_preds_P))
+craters_logo_P[[3]]<-t(do.call("cbind",ref_preds_P))
+craters_logo_P[[4]]<-t(do.call("cbind",pred_preds_P))
+
+# Save the object 
+save(craters_logo_P,file="craters_logo_P.Rdata")
+
+load(file="craters_logo_P.Rdata")
+str(craters_logo_P)
+
+# Predicted data
+# These are the predictions from the three models above. These are matrices, because we are doing this in a Bayesian context. 
+null_preds_P <- craters_logo_P$null
+ref_preds_P <- craters_logo_P$ref
+pred_preds_P <- craters_logo_P$pred
+
+# New variable
+craters_obs_P <- craters_logo_P$out_data$craters_bound[,1]
+
+# New variable
+
+craters_total_P <- craters_logo_P$out_data$craters_bound[,2]
+
+craters_null_P <- apply(null_preds_P,1,mean)
+length(craters_null_P) #256
+craters_ref_P <- apply(ref_preds_P,1,mean)
+length(craters_ref_P) #256
+craters_pred_P <- apply(pred_preds_P,1,mean)
+length(craters_pred_P) #256
+
+# Likelihood of observed data, given predicted data. We're looking for the lowest number here (this is a call to the probability distribution = how rampant a likely variable is.
+
+-sum(dbinom(craters_obs_P,prob=craters_ref_P/craters_total_P,size=50,log=T),na.rm=T) #Warning: NaNs produced[1] 2845.817
+-sum(dbinom(craters_obs_P,prob=craters_null_P/craters_total_P,size=50,log=T),na.rm=T) #Warning: NaNs produced[1] 2944.13
+-sum(dbinom(craters_obs_P,prob=craters_pred_P/craters_total_P,size=50,log=T),na.rm=T) #Warning: NaNs produced[1] 2967.901
+
+# Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
+mae(craters_null_P,craters_obs_P)  #[1] 10.69453
+mae(craters_ref_P,craters_obs_P) #10.69321
+mae(craters_pred_P, craters_obs_P) #[1] 10.69869
+
+############Monoterpenes
+
+# In this code, we are creating subsets of the data
+craters_levs_M <- unique(craters_M_use$Patch_ID)
+craters_in_M <- vector("list",length(craters_levs_M))
+craters_out_M <- vector("list",length(craters_levs_M))
+
+# We are testing three different models:
+# Model 1 is the observed chemistry
+# Model 2 is the predicted chemistry
+# Model 3 is a null model with no chemistry
+ref_preds_M <- vector("list",length(craters_levs_M))
+pred_preds_M <- vector("list",length(craters_levs_M))
+null_preds_M <- vector("list",length(craters_levs_M))
+
+for(i in 1:length(craters_levs_M)) 
+{
+
+  # Patch ID out, running the model, and predicting on the left out patch
+  
+  # Data use to fit the model
+  craters_in_M[[i]]<-craters_M_use[-which(craters_M_use$Patch_ID==craters_levs_M[i]),]
+  
+   # Data used to test the model
+  craters_out_M[[i]]<-craters_M_use[which(craters_M_use$Patch_ID==craters_levs_M[i]),]
+  
+  m0_Craters_M<-stan_glmer(craters_bound_M~1+(1|Patch_ID),data=craters_in_M[[i]],cores=4, family = "binomial", iter=10000)
+  
+  # Making predictions for the left out data
+  null_preds_M[[i]]=posterior_epred(m0_Craters_M,newdata=craters_out_M[[i]])
+  
+  mPred_Craters_M<-stan_glmer(craters_bound_M~Monoterpenes_Pred_std+(1|Patch_ID),data=craters_in_M[[i]],cores=4, family = "binomial", iter=10000)
+  
+  pred_preds_M[[i]]=posterior_epred(mPred_Craters_M,newdata=craters_out_M[[i]])
+  
+  mREF_Craters_M<-stan_glmer(craters_bound_M~Monoterpenes_Ref_std+(1|Patch_ID),data=craters_in_M[[i]],cores=4, family = "binomial", iter=10000)
+  
+  ref_preds_M[[i]]<-posterior_epred(mREF_Craters_M,newdata=craters_out_M[[i]])
+  }
+
+null_preds_t_M <- t(null_preds_M)
+
+# Extracting the predictions
+# Binding the results together in a single data frame
+craters_logo_M<-vector("list",4)
+names(craters_logo_M)<-c("out_data","null","ref","pred")
+craters_logo_M[[1]]<-do.call("rbind",craters_out_M)
+craters_logo_M[[2]]<-t(do.call("cbind",null_preds_M))
+craters_logo_M[[3]]<-t(do.call("cbind",ref_preds_M))
+craters_logo_M[[4]]<-t(do.call("cbind",pred_preds_M))
+
+# Save the object 
+save(craters_logo_M,file="craters_logo_M.Rdata")
+
+load(file="craters_logo_M.Rdata")
+str(craters_logo_M)
+
+# Predicted data
+# These are the predictions from the three models above. These are matrices, because we are doing this in a Bayesian context. 
+null_preds_M <- craters_logo_M$null
+ref_preds_M <- craters_logo_M$ref
+pred_preds_M <- craters_logo_M$pred
+
+# New variable
+craters_obs_M <- craters_logo_M$out_data$craters_bound[,1]
+
+# New variable
+
+craters_total_M <- craters_logo_M$out_data$craters_bound[,2]
+
+craters_null_M <- apply(null_preds_M,1,mean)
+length(craters_null_M) #260
+craters_ref_M <- apply(ref_preds_M,1,mean)
+length(craters_ref_M) #260
+craters_pred_M <- apply(pred_preds_M,1,mean)
+length(craters_pred_M) #260
+
+# Likelihood of observed data, given predicted data. We're looking for the lowest number here (this is a call to the probability distribution = how rampant a likely variable is.
+
+-sum(dbinom(craters_obs_M,prob=craters_ref_M/craters_total_M,size=50,log=T),na.rm=T) #[1] 2944.016
+-sum(dbinom(craters_obs_M,prob=craters_null_M/craters_total_M,size=50,log=T),na.rm=T) #[1] 2923.28
+-sum(dbinom(craters_obs_M,prob=craters_pred_M/craters_total_M,size=50,log=T),na.rm=T) #[1] 2752.247
+
+# Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
+mae(craters_null_M,craters_obs_M) #[1] 11.06728
+# Run these for all columns of the posterior estimates of mae, and then apply the 95%CI to this).
+mae(craters_ref_M,craters_obs_M) #[1] 11.07364
+mae(craters_pred_M, craters_obs_M) #[1] 11.06924
+
+############CP
+
+# In this code, we are creating subsets of the data
+craters_levs_CP <- unique(craters_CP_use$Patch_ID)
+craters_in_CP <- vector("list",length(craters_levs_CP))
+craters_out_CP <- vector("list",length(craters_levs_CP))
+
+# We are testing three different models:
+# Model 1 is the observed chemistry
+# Model 2 is the predicted chemistry
+# Model 3 is a null model with no chemistry
+ref_preds_CP <- vector("list",length(craters_levs_CP))
+pred_preds_CP <- vector("list",length(craters_levs_CP))
+null_preds_CP <- vector("list",length(craters_levs_CP))
+
+for(i in 1:length(craters_levs_CP)) 
+{
+
+  # Patch ID out, running the model, and predicting on the left out patch
+  
+  # Data use to fit the model
+  craters_in_CP[[i]]<-craters_CP_use[-which(craters_CP_use$Patch_ID==craters_levs_CP[i]),]
+  
+   # Data used to test the model
+  craters_out_CP[[i]]<-craters_CP_use[which(craters_CP_use$Patch_ID==craters_levs_CP[i]),]
+  
+  m0_Craters_CP<-stan_glmer(craters_bound_CP~1+(1|Patch_ID),data=craters_in_CP[[i]],cores=4, family = "binomial", iter=10000)
+  
+  # Making predictions for the left out data
+  null_preds_CP[[i]]=posterior_epred(m0_Craters_CP,newdata=craters_out_CP[[i]])
+  
+  mPred_Craters_CP<-stan_glmer(craters_bound_CP~CP_Pred_std+(1|Patch_ID),data=craters_in_CP[[i]],cores=4, family = "binomial", iter=10000)
+  
+  pred_preds_CP[[i]]=posterior_epred(mPred_Craters_CP,newdata=craters_out_CP[[i]])
+  
+  mREF_Craters_CP<-stan_glmer(craters_bound_CP~CP_Ref_std+(1|Patch_ID),data=craters_in_CP[[i]],cores=4, family = "binomial", iter=10000)
+  
+  ref_preds_CP[[i]]<-posterior_epred(mREF_Craters_CP,newdata=craters_out_CP[[i]])
+  }
+
+null_preds_t_CP <- t(null_preds_CP)
+
+# Extracting the predictions
+# Binding the results together in a single data frame
+craters_logo_CP<-vector("list",4)
+names(craters_logo_CP)<-c("out_data","null","ref","pred")
+craters_logo_CP[[1]]<-do.call("rbind",craters_out_CP)
+craters_logo_CP[[2]]<-t(do.call("cbind",null_preds_CP))
+craters_logo_CP[[3]]<-t(do.call("cbind",ref_preds_CP))
+craters_logo_CP[[4]]<-t(do.call("cbind",pred_preds_CP))
+
+# Save the object 
+save(craters_logo_CP,file="craters_logo_CP.Rdata")
+
+load(file="craters_logo_CP.Rdata")
+str(craters_logo_CP)
+
+# Predicted data
+# These are the predictions from the three models above. These are matrices, because we are doing this in a Bayesian context. 
+null_preds_CP <- craters_logo_CP$null
+ref_preds_CP <- craters_logo_CP$ref
+pred_preds_CP <- craters_logo_CP$pred
+
+# New variable
+craters_obs_CP <- craters_logo_CP$out_data$craters_bound[,1]
+
+# New variable
+craters_total_CP <- craters_logo_CP$out_data$craters_bound[,2]
+
+craters_null_CP <- apply(null_preds_CP,1,mean)
+length(craters_null_CP) #260
+craters_ref_CP <- apply(ref_preds_CP,1,mean)
+length(craters_ref_CP) #260
+craters_pred_CP <- apply(pred_preds_CP,1,mean)
+length(craters_pred_CP) #260
+
+# Likelihood of observed data, given predicted data. We're looking for the lowest number here (this is a call to the probability distribution = how rampant a likely variable is.
+
+-sum(dbinom(craters_obs_CP,prob=craters_ref_CP/craters_total_CP,size=50,log=T),na.rm=T) #[1] 2999.712
+-sum(dbinom(craters_obs_CP,prob=craters_null_CP/craters_total_CP,size=50,log=T),na.rm=T) #[1] 2926.449
+-sum(dbinom(craters_obs_CP,prob=craters_pred_CP/craters_total_CP,size=50,log=T),na.rm=T) #[1] 2972.656
+
+# Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. # Run these for all columns of the posterior estimates of mae, and then apply the 95%CI to this).
+mae(craters_null_CP,craters_obs_CP) #11.06701
+mae(craters_ref_CP,craters_obs_CP) #11.05621
+mae(craters_pred_CP, craters_obs_CP) #11.06274
+
+```
+
+# General posterior draw descriptive statistics
+
+```{r}
+
+nameo <- list.files()[-1]
+
+chem_range <- read.csv("Text_Chemistry_Mins_Max_16Nov2025.csv", header=TRUE)
+
+load("mREF_Craters_single_P.Rdata")
+load("mPRED_Craters_single_P.Rdata")
+
+load("mREF_Craters_single_M.Rdata")
+load("mPRED_Craters_single_M.Rdata")
+
+load("mREF_Craters_single_CP.Rdata")
+load("mPRED_Craters_single_CP.Rdata")
+
+# All chemicals
+chemm <- read.csv("Text_Chemistry_Mins_Max_16Nov2025.csv", header=TRUE)
+
+ref_craters_posteriors_P <- data.frame(mREF_Craters_single_P)
+pred_craters_posteriors_P <- data.frame(mPRED_Craters_single_P)
+ref_craters_posteriors_M <- data.frame(mREF_Craters_single_M)
+pred_craters_posteriors_M <- data.frame(mPRED_Craters_single_M)
+ref_craters_posteriors_CP <- data.frame(mREF_Craters_single_CP)
+pred_craters_posteriors_CP <- data.frame(mPRED_Craters_single_CP)
+
+dim(ref_craters_posteriors_P) #20000    19
+dim(pred_craters_posteriors_P) #20000    19
+dim(ref_craters_posteriors_M) #20000    20
+dim(pred_craters_posteriors_M) #20000    20
+dim(ref_craters_posteriors_CP) #20000    20
+dim(pred_craters_posteriors_CP) #20000    20
+
+```
+
+# Probability of Direction - Reference Chemistry
+
+What is the percentage of draws that are either positive of negative?
+
+```{r}
+
+# Phenolics
+length(which(ref_craters_posteriors_P$Phenolics_Ref_std>0))/length(ref_craters_posteriors_P$Phenolics_Ref_std) #0
+length(which(ref_craters_posteriors_P$Phenolics_Ref_std<0))/length(ref_craters_posteriors_P$Phenolics_Ref_std)#100
+
+# Monoterpenes
+length(which(ref_craters_posteriors_M$Monoterpenes_Ref_std>0))/length(ref_craters_posteriors_M$Monoterpenes_Ref_std) #0.0062
+length(which(ref_craters_posteriors_M$Monoterpenes_Ref_std<0))/length(ref_craters_posteriors_M$Monoterpenes_Ref_std) #0.9938
+
+# Crude Proteins
+length(which(ref_craters_posteriors_CP$CP_Ref_std>0))/length(ref_craters_posteriors_CP$CP_Ref_std) #1
+length(which(ref_craters_posteriors_CP$CP_Ref_std<0))/length(ref_craters_posteriors_CP$CP_Ref_std) #0
+```
+
+# Probability of Direction - Predicted Chemistry
+
+What is the percentage of draws that are either positive of negative?
+
+Note that we never report probabilities of 100% in papers--instead write >99%
+
+```{r}
+
+# Phenolics
+length(which(pred_craters_posteriors_P$Phenolics_Pred_std>0))/length(pred_craters_posteriors_P$Phenolics_Pred_std) #0
+length(which(pred_craters_posteriors_P$Phenolics_Pred_std<0))/length(pred_craters_posteriors_P$Phenolics_Pred_std) #1
+
+# Monoterpenes
+length(which(pred_craters_posteriors_M$Monoterpenes_Pred_std>0))/length(pred_craters_posteriors_M$Monoterpenes_Pred_std) #0
+length(which(pred_craters_posteriors_M$Monoterpenes_Pred_std<0))/length(pred_craters_posteriors_M$Monoterpenes_Pred_std) #1
+
+# Crude Proteins
+length(which(pred_craters_posteriors_CP$CP_Pred_std>0))/length(pred_craters_posteriors_CP$CP_Pred_std) #1
+length(which(pred_craters_posteriors_CP$CP_Pred_std<0))/length(pred_craters_posteriors_CP$CP_Pred_std) #0
+```
+
+# Effect Size Min & Max - Reference Chemistry
+
+```{r}
+
+# Referencing min and max from data frame
+chemm$Ref_Min[which(chemm$Site=="Craters" & chemm$Chemical=="Crude Protein")] #-0.9465833
+chemm$Ref_Max[which(chemm$Site=="Craters" & chemm$Chemical=="Crude Protein")] #1.030761
+
+# Setting up an empty vector to fill in with predictions
+predicted_diff_Phenolics_ref <- rep(NA,times=ncol(ref_craters_posteriors_P))
+predicted_diff_Monoterpenes_ref <- rep(NA,times=ncol(ref_craters_posteriors_M))
+predicted_diff_cp_ref <- rep(NA,times=ncol(ref_craters_posteriors_CP))
+
+# Phenolics
+for(i in 1:ncol(ref_craters_posteriors_P)){
+
+# This is just an intercept + slope*x. plogis ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_P<-plogis(ref_craters_posteriors_P$X.Intercept.[i]+ref_craters_posteriors_P$Phenolics_Ref_std[i]*chemm$Ref_Min[which(chemm$Site=="Craters" & chemm$Chemical=="Phenolics")])
+  
+max_pred_P<-plogis(ref_craters_posteriors_P$X.Intercept.[i]+ref_craters_posteriors_P$Phenolics_Ref_std[i]*chemm$Ref_Max[which(chemm$Site=="Craters" & chemm$Chemical=="Phenolics")])
+  
+predicted_diff_Phenolics_ref[i]<-max_pred_P-min_pred_P #This is the difference we will store.
+}  
+
+quantile(predicted_diff_Phenolics_ref,c(0.025,0.5,0.975)) 
+
+#       2.5%         50%       97.5% 
+#-0.2638448 -0.2248960 -0.2005545 
+
+# Monoterpenes
+for(i in 1:ncol(ref_craters_posteriors_M)){
+
+# This is just an intercept + slope*x. plogis ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_M<-plogis(ref_craters_posteriors_M$X.Intercept.[i]+ref_craters_posteriors_M$Monoterpenes_Ref_std[i]*chemm$Ref_Min[which(chemm$Site=="Craters" & chemm$Chemical=="Monoterpenes")])
+  
+max_pred_M<-plogis(ref_craters_posteriors_M$X.Intercept.[i]+ref_craters_posteriors_M$Monoterpenes_Ref_std[i]*chemm$Ref_Max[which(chemm$Site=="Craters" & chemm$Chemical=="Monoterpenes")])
+  
+predicted_diff_Monoterpenes_ref[i]<-max_pred_M-min_pred_M #This is the difference we will store. 
+}  
+
+quantile(predicted_diff_Monoterpenes_ref,c(0.025,0.5,0.975)) 
+#       2.5%         50%       97.5% 
+#-0.08711025 -0.05940152 -0.03004152 
+
+# CP
+for(i in 1:ncol(ref_craters_posteriors_CP)){
+
+# This is just an intercept + slope*x. plogis ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_CP<-plogis(ref_craters_posteriors_CP$X.Intercept.[i]+ref_craters_posteriors_CP$CP_Ref_std[i]*chemm$Ref_Min[which(chemm$Site=="Craters" & chemm$Chemical=="Crude Protein")])
+  
+max_pred_CP<-plogis(ref_craters_posteriors_CP$X.Intercept.[i]+ref_craters_posteriors_CP$CP_Ref_std[i]*chemm$Ref_Max[which(chemm$Site=="Craters" & chemm$Chemical=="Crude Protein")])
+  
+predicted_diff_cp_ref[i]<-max_pred_CP-min_pred_CP #This is the difference we will store.
+  }  
+
+quantile(predicted_diff_cp_ref,c(0.025,0.5,0.975)) 
+#     2.5%       50%     97.5% 
+#0.2709220 0.3009621 0.3558108 
+
+```
+
+# Effect Size Min & Max - Predicted Chemistry
+
+```{r}
+
+# Referencing min and max from data frame
+chemm$Pred_Min[which(chemm$Site=="Craters" & chemm$Chemical=="Crude Protein")] #-1.144643
+chemm$Pred_Max[which(chemm$Site=="Craters" & chemm$Chemical=="Crude Protein")] #1.173767
+
+# Setting up an empty vector to fill in with predictions
+predicted_diff_Phenolics_pred <- rep(NA,times=ncol(pred_craters_posteriors_P))
+predicted_diff_Monoterpenes_pred <- rep(NA,times=ncol(pred_craters_posteriors_M))
+predicted_diff_cp_pred <- rep(NA,times=ncol(pred_craters_posteriors_CP))
+
+# Phenolics
+for(i in 1:ncol(pred_craters_posteriors_P)){
+
+# This is just an intercept + slope*x. plogis ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_P<-plogis(pred_craters_posteriors_P$X.Intercept.[i]+pred_craters_posteriors_P$Phenolics_Pred_std[i]*chemm$Pred_Min[which(chemm$Site=="Craters" & chemm$Chemical=="Phenolics")])
+  
+max_pred_P<-plogis(pred_craters_posteriors_P$X.Intercept.[i]+pred_craters_posteriors_P$Phenolics_Pred_std[i]*chemm$Pred_Max[which(chemm$Site=="Craters" & chemm$Chemical=="Phenolics")])
+  
+predicted_diff_Phenolics_pred[i]<-max_pred_P-min_pred_P 
+}  
+
+quantile(predicted_diff_Phenolics_pred,c(0.025,0.5,0.975)) 
+#       2.5%         50%       97.5% 
+#-0.1958070 -0.1582912 -0.1398663 
+
+# Monoterpenes
+for(i in 1:ncol(pred_craters_posteriors_M)){
+
+# This is just an intercept + slope*x. plogis ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_M<-plogis(pred_craters_posteriors_M$X.Intercept.[i]+pred_craters_posteriors_M$Monoterpenes_Pred_std[i]*chemm$Pred_Min[which(chemm$Site=="Craters" & chemm$Chemical=="Monoterpenes")])
+  
+max_pred_M<-plogis(pred_craters_posteriors_M$X.Intercept.[i]+pred_craters_posteriors_M$Monoterpenes_Pred_std[i]*chemm$Pred_Max[which(chemm$Site=="Craters" & chemm$Chemical=="Monoterpenes")])
+  
+predicted_diff_Monoterpenes_pred[i]<-max_pred_M-min_pred_M #This is the difference we will store.
+}  
+
+quantile(predicted_diff_Monoterpenes_pred,c(0.025,0.5,0.975)) 
+#        2.5%          50%        97.5% 
+#-0.5142633 -0.4465099 -0.4207765 
+
+# CP
+for(i in 1:ncol(pred_craters_posteriors_CP)){
+
+# This is just an intercept + slope*x. plogis ensures it is a probability. We are looping over every value of the posterior draw to propagate uncertainty.
+min_pred_CP<-plogis(pred_craters_posteriors_CP$X.Intercept.[i]+pred_craters_posteriors_CP$CP_Pred_std[i]*chemm$Pred_Min[which(chemm$Site=="Craters" & chemm$Chemical=="Crude Protein")])
+  
+max_pred_CP<-plogis(pred_craters_posteriors_CP$X.Intercept.[i]+pred_craters_posteriors_CP$CP_Pred_std[i]*chemm$Pred_Max[which(chemm$Site=="Craters" & chemm$Chemical=="Crude Protein")])
+  
+predicted_diff_cp_pred[i]<-max_pred_CP-min_pred_CP #This is the difference we will store.
+  }  
+
+quantile(predicted_diff_cp_pred,c(0.025,0.5,0.975)) 
+#     2.5%       50%     97.5% 
+#0.2154880 0.2668801 0.3005122 
+
+```
+
