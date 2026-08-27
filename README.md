@@ -24,10 +24,17 @@ Data files are not stored in this repository. Download them from the Dryad link 
 File	Description
 
 1.PLSR_train_export_2025.R	Creates predicted chemistries from NIRS data.
+
 2.Cedar_Gulch_Binomial_2026_Final.Rmd  Analyzes bite data from Cedar Gulch. 
+
 2.Craters_Individuals_2026_Final.Rmd  Analyzes bite data from Craters. 
+
 2.JN_Magic_binomial_2026_Final.Rmd  Analyzes bite data from Craters.
+
 2.KG_Magic_Site_2026_Final.Rmd  Analyzes bite data from Craters.
+
 2.Raft_River_2026_Final.Rmd  Analyzes bite data from Craters.
+
 3.GGRidges_2026.Rmd  Creates ridges plots from posterior distributions. 
+
 4.Counterfactuals_2026.Rmd  Creates counterfactual plots from data. 
