@@ -130,34 +130,34 @@ unique(Cedar_CP$Bites)
 
 ## Check out the dimensions of the input data:
 # Bites
-length(Cedar_P$Bites) #602
+length(Cedar_P$Bites) 
 table(Cedar_P$Bites)
 
-length(Cedar_M$Bites) #625
+length(Cedar_M$Bites) 
 table(Cedar_M$Bites)
 
-length(Cedar_CP$Bites) #619
+length(Cedar_CP$Bites) 
 table(Cedar_CP$Bites)
 
 # Season
-table(Cedar_P$Season) #summer: 224 winter: 378
-table(Cedar_M$Season) #summer: 238 winter: 387
-table(Cedar_CP$Season) #summer: 236 winter: 383
+table(Cedar_P$Season) 
+table(Cedar_M$Season) 
+table(Cedar_CP$Season) 
 
 # Species
-table(Cedar_P$Species) #dwarf:95 dwarf_comp: 46 nova:23 wyo_comp:111 wyoming:327
-table(Cedar_M$Species) #dwarf:100 dwarf_comp: 48 nova:25 wyo_comp:116 wyoming:336
-table(Cedar_CP$Species) #dwarf:98 dwarf_comp: 47 nova:25 wyo_comp:116 wyoming:333
+table(Cedar_P$Species) 
+table(Cedar_M$Species) 
+table(Cedar_CP$Species) 
 
 # Plant height # Not available at this site
-table(Cedar_P$PlantSize) #< table of extent 0 >
-table(Cedar_M$PlantSize) #< table of extent 0 >
-table(Cedar_CP$PlantSize) #< table of extent 0 >
+table(Cedar_P$PlantSize) 
+table(Cedar_M$PlantSize) 
+table(Cedar_CP$PlantSize) 
 
 # Patch type
-table(Cedar_P$PatchType) #dwarf:200 off:211 on:191 
-table(Cedar_M$PatchType) #dwarf:210 off:216 on:199
-table(Cedar_CP$PatchType) #dwarf:207 off:214 on:198
+table(Cedar_P$PatchType)  
+table(Cedar_M$PatchType)
+table(Cedar_CP$PatchType) 
 
 # Patch ID
 table(Cedar_P$Patch_ID)
@@ -196,76 +196,76 @@ Cedar_use_CP$Bites_Binomial <- ifelse(Cedar_use_CP$Bites > 0, 1, 0)
 
 ## Check out the dimensions of the final data:
 # Bites
-length(Cedar_use_P$Bites_Binomial) #411
+length(Cedar_use_P$Bites_Binomial) 
 table(Cedar_use_P$Bites_Binomial)
 
-length(Cedar_use_M$Bites_Binomial) #427
+length(Cedar_use_M$Bites_Binomial) 
 table(Cedar_use_M$Bites_Binomial)
 
-length(Cedar_use_CP$Bites_Binomial) #422
+length(Cedar_use_CP$Bites_Binomial) 
 table(Cedar_use_CP$Bites_Binomial)
 
 # Season
-table(Cedar_use_P$Season) #summer:162 winter:249
-table(Cedar_use_M$Season) #summer:172 winter:255
-table(Cedar_use_CP$Season) #summer:170 winter:252
+table(Cedar_use_P$Season) 
+table(Cedar_use_M$Season) 
+table(Cedar_use_CP$Season) 
 
 # Patch type
-table(Cedar_use_P$PatchType) #dwarf:148 off:135 on:128
-table(Cedar_use_M$PatchType) #dwarf:155 off:140 on:132
-table(Cedar_use_CP$PatchType) #dwarf:153 off:138 on:131
+table(Cedar_use_P$PatchType) 
+table(Cedar_use_M$PatchType) 
+table(Cedar_use_CP$PatchType) 
 
 #Mins and Maxes
-min(Cedar_use_P$Phenolics_Ref_std) #-1.149669
-max(Cedar_use_P$Phenolics_Ref_std) #2.276075
-min(Cedar_use_P$Phenolics_Pred_std) #-1.570639
-max(Cedar_use_P$Phenolics_Pred_std) #2.439718
+min(Cedar_use_P$Phenolics_Ref_std) 
+max(Cedar_use_P$Phenolics_Ref_std) 
+min(Cedar_use_P$Phenolics_Pred_std) 
+max(Cedar_use_P$Phenolics_Pred_std) 
 
-min(Cedar_use_M$Monoterpenes_Ref_std) #-1.030399
-max(Cedar_use_M$Monoterpenes_Ref_std) #4.339147
-min(Cedar_use_M$Monoterpenes_Pred_std) #-2.720693
-max(Cedar_use_M$Monoterpenes_Pred_std) #1.660058
+min(Cedar_use_M$Monoterpenes_Ref_std) 
+max(Cedar_use_M$Monoterpenes_Ref_std) 
+min(Cedar_use_M$Monoterpenes_Pred_std) 
+max(Cedar_use_M$Monoterpenes_Pred_std) 
 
-min(Cedar_use_CP$CP_Ref_std) #-1.363473
-max(Cedar_use_CP$CP_Ref_std) #2.138242
-min(Cedar_use_CP$CP_Pred_std) #-1.565088
-max(Cedar_use_CP$CP_Pred_std) #2.316108
+min(Cedar_use_CP$CP_Ref_std) 
+max(Cedar_use_CP$CP_Ref_std) 
+min(Cedar_use_CP$CP_Pred_std) 
+max(Cedar_use_CP$CP_Pred_std) 
 
 ## Descriptive Stats
 
 # Phenolics
-mean(Cedar_P$Phenolics_Ref, na.rm=TRUE) #10.90597
-sd(Cedar_P$Phenolics_Ref, na.rm=TRUE) #3.990679
-mean(Cedar_P$Phenolics_newpred, na.rm=TRUE) #11.18504
-sd(Cedar_P$Phenolics_newpred, na.rm=TRUE) #6.97839
+mean(Cedar_P$Phenolics_Ref, na.rm=TRUE) 
+sd(Cedar_P$Phenolics_Ref, na.rm=TRUE) 
+mean(Cedar_P$Phenolics_newpred, na.rm=TRUE) 
+sd(Cedar_P$Phenolics_newpred, na.rm=TRUE) 
 
-mean(Cedar_use_P$Phenolics_Ref_std, na.rm=TRUE) #-0.04535968
-sd(Cedar_use_P$Phenolics_Ref_std, na.rm=TRUE) #0.4915738
-mean(Cedar_use_P$Phenolics_Pred_std, na.rm=TRUE) #-0.03606756
-sd(Cedar_use_P$Phenolics_Pred_std, na.rm=TRUE) #0.4897037
+mean(Cedar_use_P$Phenolics_Ref_std, na.rm=TRUE) 
+sd(Cedar_use_P$Phenolics_Ref_std, na.rm=TRUE) 
+mean(Cedar_use_P$Phenolics_Pred_std, na.rm=TRUE) 
+sd(Cedar_use_P$Phenolics_Pred_std, na.rm=TRUE) 
 
 # Monoterpenes
-mean(Cedar_M$Monoterpenes_Ref, na.rm=TRUE) #410.205
-sd(Cedar_M$Monoterpenes_Ref, na.rm=TRUE) #177.6744
-mean(Cedar_M$Monoterpenes_newpred, na.rm=TRUE) #412.8084
-sd(Cedar_M$Monoterpenes_newpred, na.rm=TRUE) #242.3874
+mean(Cedar_M$Monoterpenes_Ref, na.rm=TRUE) 
+sd(Cedar_M$Monoterpenes_Ref, na.rm=TRUE) 
+mean(Cedar_M$Monoterpenes_newpred, na.rm=TRUE) 
+sd(Cedar_M$Monoterpenes_newpred, na.rm=TRUE) 
 
-mean(Cedar_use_M$Monoterpenes_Ref_std, na.rm=TRUE) #-0.0332545
-sd(Cedar_use_M$Monoterpenes_Ref_std, na.rm=TRUE) #0.5191545
-mean(Cedar_use_M$Monoterpenes_Pred_std, na.rm=TRUE) #-0.03276188
-sd(Cedar_use_M$Monoterpenes_Pred_std, na.rm=TRUE) #0.491123
+mean(Cedar_use_M$Monoterpenes_Ref_std, na.rm=TRUE) 
+sd(Cedar_use_M$Monoterpenes_Ref_std, na.rm=TRUE) 
+mean(Cedar_use_M$Monoterpenes_Pred_std, na.rm=TRUE) 
+sd(Cedar_use_M$Monoterpenes_Pred_std, na.rm=TRUE) 
 
 # Crude Proteins
 
-mean(Cedar_CP$CP_Ref, na.rm=TRUE) #13.37866
-sd(Cedar_CP$CP_Ref, na.rm=TRUE) #1.899069
-mean(Cedar_CP$CP_newpred, na.rm=TRUE) #13.36841
-sd(Cedar_CP$CP_newpred, na.rm=TRUE) #1.62548
+mean(Cedar_CP$CP_Ref, na.rm=TRUE) 
+sd(Cedar_CP$CP_Ref, na.rm=TRUE) 
+mean(Cedar_CP$CP_newpred, na.rm=TRUE) 
+sd(Cedar_CP$CP_newpred, na.rm=TRUE) 
 
-mean(Cedar_use_CP$CP_Ref_std, na.rm=TRUE) #-0.003047234
-sd(Cedar_use_CP$CP_Ref_std, na.rm=TRUE) #0.5379341
-mean(Cedar_use_CP$CP_Pred_std, na.rm=TRUE) #0.0004147949
-sd(Cedar_use_CP$CP_Pred_std, na.rm=TRUE) #0.5327925
+mean(Cedar_use_CP$CP_Ref_std, na.rm=TRUE) 
+sd(Cedar_use_CP$CP_Ref_std, na.rm=TRUE) 
+mean(Cedar_use_CP$CP_Pred_std, na.rm=TRUE) 
+sd(Cedar_use_CP$CP_Pred_std, na.rm=TRUE) 
 
 ```
 
@@ -455,16 +455,16 @@ Cedar_total_P <- Cedar_logo_P$out_data$Bites
 # 1 = whether you're doing the mean across rows or columns
 # Trying to predict across patchm, to create something in a list. 
 Cedar_null_P <- apply(null_preds_P,1,mean)
-length(Cedar_null_P) #411
+length(Cedar_null_P) 
 Cedar_ref_P <- apply(ref_preds_P,1,mean)
-length(Cedar_ref_P) #411
+length(Cedar_ref_P) 
 Cedar_pred_P <- apply(pred_preds_P,1,mean)
-length(Cedar_pred_P) #411
+length(Cedar_pred_P) 
 
 # Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
-mae(Cedar_null_P,Cedar_obs_P) #2.266539
-mae(Cedar_ref_P,Cedar_obs_P) #2.266739
-mae(Cedar_pred_P, Cedar_obs_P) #2.266489
+mae(Cedar_null_P,Cedar_obs_P) 
+mae(Cedar_ref_P,Cedar_obs_P) 
+mae(Cedar_pred_P, Cedar_obs_P) 
 
 ##Monoterpenes
 
@@ -537,16 +537,16 @@ Cedar_total_M <- Cedar_logo_M$out_data$Bites
 # 1 = whether you're doing the mean across rows or columns
 # Trying to predict across patchm, to create something in a list. 
 Cedar_null_M <- apply(null_preds_M,1,mean)
-length(Cedar_null_M) #427
+length(Cedar_null_M)
 Cedar_ref_M <- apply(ref_preds_M,1,mean)
-length(Cedar_ref_M) #427
+length(Cedar_ref_M) 
 Cedar_pred_M <- apply(pred_preds_M,1,mean)
-length(Cedar_pred_M) #427
+length(Cedar_pred_M) 
 
 # Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
-mae(Cedar_null_M,Cedar_obs_M) #2.286548
-mae(Cedar_ref_M,Cedar_obs_M) #2.278343
-mae(Cedar_pred_M, Cedar_obs_M) #2.286849
+mae(Cedar_null_M,Cedar_obs_M) 
+mae(Cedar_ref_M,Cedar_obs_M)
+mae(Cedar_pred_M, Cedar_obs_M) 
 
 ##CP
 
@@ -619,16 +619,16 @@ Cedar_total_CP <- Cedar_logo_CP$out_data$Bites
 # 1 = whether you're doing the mean across rows or columns
 # Trying to predict across patchm, to create something in a list. 
 Cedar_null_CP <- apply(null_preds_CP,1,mean)
-length(Cedar_null_CP) #422
+length(Cedar_null_CP) 
 Cedar_ref_CP <- apply(ref_preds_CP,1,mean)
-length(Cedar_ref_CP) #422
+length(Cedar_ref_CP) 
 Cedar_pred_CP <- apply(pred_preds_CP,1,mean)
-length(Cedar_pred_CP) #422
+length(Cedar_pred_CP) 
 
 # Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
-mae(Cedar_null_CP,Cedar_obs_CP) #2.313035
-mae(Cedar_ref_CP,Cedar_obs_CP) #2.310158
-mae(Cedar_pred_CP, Cedar_obs_CP) #2.306292
+mae(Cedar_null_CP,Cedar_obs_CP) 
+mae(Cedar_ref_CP,Cedar_obs_CP) 
+mae(Cedar_pred_CP, Cedar_obs_CP) 
 
 ```
 
@@ -662,14 +662,14 @@ pred_cedar_posteriors_M <- data.frame(mPRED_Cedar_single_M)
 ref_cedar_posteriors_CP <- data.frame(mREF_Cedar_single_CP)
 pred_cedar_posteriors_CP <- data.frame(mPRED_Cedar_single_CP)
 
-dim(ref_cedar_posteriors_P) #20000    94
-dim(pred_cedar_posteriors_P) #20000    94
+dim(ref_cedar_posteriors_P) 
+dim(pred_cedar_posteriors_P) 
 
-dim(ref_cedar_posteriors_M) #20000    94
-dim(pred_cedar_posteriors_M) #20000    94
+dim(ref_cedar_posteriors_M) 
+dim(pred_cedar_posteriors_M) 
 
-dim(ref_cedar_posteriors_CP) #20000    94
-dim(pred_cedar_posteriors_CP) #20000    94
+dim(ref_cedar_posteriors_CP) 
+dim(pred_cedar_posteriors_CP) 
 
 ```
 
@@ -680,16 +680,16 @@ What is the percentage of draws that are either positive of negative?
 ```{r}
 
 # Phenolics
-length(which(ref_cedar_posteriors_P$Phenolics_Ref_std>0))/length(ref_cedar_posteriors_P$Phenolics_Ref_std) #0.772
-length(which(ref_cedar_posteriors_P$Phenolics_Ref_std<0))/length(ref_cedar_posteriors_P$Phenolics_Ref_std) #0.228
+length(which(ref_cedar_posteriors_P$Phenolics_Ref_std>0))/length(ref_cedar_posteriors_P$Phenolics_Ref_std) 
+length(which(ref_cedar_posteriors_P$Phenolics_Ref_std<0))/length(ref_cedar_posteriors_P$Phenolics_Ref_std)
 
 # Monoterpenes
-length(which(ref_cedar_posteriors_M$Monoterpenes_Ref_std>0))/length(ref_cedar_posteriors_M$Monoterpenes_Ref_std) #0.0.99545
-length(which(ref_cedar_posteriors_M$Monoterpenes_Ref_std<0))/length(ref_cedar_posteriors_M$Monoterpenes_Ref_std) #0.00455
+length(which(ref_cedar_posteriors_M$Monoterpenes_Ref_std>0))/length(ref_cedar_posteriors_M$Monoterpenes_Ref_std) 
+length(which(ref_cedar_posteriors_M$Monoterpenes_Ref_std<0))/length(ref_cedar_posteriors_M$Monoterpenes_Ref_std) 
 
 # Crude Proteins
-length(which(ref_cedar_posteriors_CP$CP_Ref_std>0))/length(ref_cedar_posteriors_CP$CP_Ref_std) #0.8668
-length(which(ref_cedar_posteriors_CP$CP_Ref_std<0))/length(ref_cedar_posteriors_CP$CP_Ref_std) #0.1332
+length(which(ref_cedar_posteriors_CP$CP_Ref_std>0))/length(ref_cedar_posteriors_CP$CP_Ref_std) 
+length(which(ref_cedar_posteriors_CP$CP_Ref_std<0))/length(ref_cedar_posteriors_CP$CP_Ref_std)
 
 ```
 
@@ -738,8 +738,6 @@ predicted_diff_Phenolics_ref[i] <- max_pred_P-min_pred_P # This is the differenc
 }  
 
 quantile(predicted_diff_Phenolics_ref,c(0.025,0.5,0.975)) 
-# 2.5%       50%     97.5% 
-#-0.016832733  0.008345562  0.152699832 
 
 # Monoterpenes
 for(i in 1:ncol(ref_cedar_posteriors_M)){
@@ -753,8 +751,6 @@ predicted_diff_Monoterpenes_ref[i] <- max_pred_M-min_pred_M # This is the differ
 }  
 
 quantile(predicted_diff_Monoterpenes_ref,c(0.025,0.5,0.975)) 
-#      2.5%        50%      97.5% 
-#0.02200716 0.59794622 0.98556984
 
 # CP
 for(i in 1:ncol(ref_cedar_posteriors_CP)){
@@ -768,8 +764,6 @@ predicted_diff_cp_ref[i] <- max_pred_CP-min_pred_CP # This is the difference we 
   }  
 
 quantile(predicted_diff_cp_ref,c(0.025,0.5,0.975)) 
-#        2.5%          50%        97.5% 
-#-0.006090746  0.013670849  0.100952680 
 
 ```
 
@@ -798,8 +792,6 @@ predicted_diff_Phenolics_pred[i] <- max_pred_P-min_pred_P # This is the differen
 }  
 
 quantile(predicted_diff_Phenolics_pred,c(0.025,0.5,0.975)) 
-#        2.5%          50%        97.5% 
-#-0.01222614  0.01005330  0.17445038 
 
 # Monoterpenes
 for(i in 1:ncol(pred_cedar_posteriors_M)){
@@ -813,8 +805,7 @@ predicted_diff_Monoterpenes_pred[i] <- max_pred_M-min_pred_M # This is the diffe
 }  
 
 quantile(predicted_diff_Monoterpenes_pred,c(0.025,0.5,0.975)) 
-#         2.5%           50%         97.5% 
-#-0.054352310  0.001363939  0.055221976  
+
 
 # CP
 for(i in 1:ncol(pred_cedar_posteriors_CP)){
@@ -829,7 +820,5 @@ predicted_diff_cp_pred[i] <- max_pred_CP-min_pred_CP # This is the difference we
 
 quantile(predicted_diff_cp_pred,c(0.025,0.5,0.975)) 
 
-#        2.5%          50%        97.5% 
-#-0.003451768  0.039192719  0.211303498
 
 ```
