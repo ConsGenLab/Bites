@@ -136,39 +136,39 @@ craters_CP <- merge(Craters_CP,mbit,by.x="Sample",by.y="Sample")
 
 ## Check out the dimensions of the input data:
 # Bites
-length(craters_P$bites_binomial) #256
+length(craters_P$bites_binomial) 
 table(craters_P$bites_binomial)
 
-length(craters_M$bites_binomial) #260
+length(craters_M$bites_binomial) 
 table(craters_M$bites_binomial)
 
-length(craters_CP$bites_binomial) #260
+length(craters_CP$bites_binomial) 
 table(craters_CP$bites_binomial)
 
 # Season #This site is winter only
-table(craters_P$Season) #winter 256
-table(craters_M$Season) #winter 260
-table(craters_CP$Season) #winter 260
+table(craters_P$Season) 
+table(craters_M$Season) 
+table(craters_CP$Season) 
 
 # Species
-table(craters_P$Species) # 3-tip 75 hybrid 3 wyoming 178 
-table(craters_M$Species) # 3-tip 75 hybrid 4 wyoming 181 
-table(craters_CP$Species) #3-tip 75 hybrid 4 wyoming 181 
+table(craters_P$Species)
+table(craters_M$Species) 
+table(craters_CP$Species) 
 
 # Plant height 
-table(craters_P$PlantSize) # large 60 medium 172  small 24 
-table(craters_M$PlantSize) # large 61 medium 175  small 24 
-table(craters_CP$PlantSize) # large 61 medium 175  small 24 
+table(craters_P$PlantSize) 
+table(craters_M$PlantSize) 
+table(craters_CP$PlantSize)  
 
 # Patch Type
-table(craters_P$PatchType.x) # random 99 used 157
-table(craters_M$PatchType.x) # random 100 used 160
-table(craters_CP$PatchType.x) # random 100 used 160
+table(craters_P$PatchType.x) 
+table(craters_M$PatchType.x) 
+table(craters_CP$PatchType.x) 
 
 # Patch_ID here is the random effect
-table(craters_P$Patch_ID.x)[-which(table(craters_P$Patch_ID.x)==0)] #named integer(0)
-table(craters_M$Patch_ID.x)[-which(table(craters_M$Patch_ID.x)==0)] #named integer(0)
-table(craters_CP$Patch_ID.x)[-which(table(craters_CP$Patch_ID.x)==0)] #named integer(0)
+table(craters_P$Patch_ID.x)[-which(table(craters_P$Patch_ID.x)==0)] 
+table(craters_M$Patch_ID.x)[-which(table(craters_M$Patch_ID.x)==0)] 
+table(craters_CP$Patch_ID.x)[-which(table(craters_CP$Patch_ID.x)==0)] 
 
 # Standardize our covariates
 stdize<-function(x) {(x-mean(x,na.rm=TRUE))/(2*sd(x,na.rm=TRUE))}
@@ -211,23 +211,23 @@ craters_CP_use$craters_bound_CP <- craters_bound_CP
 
 ## Check out the dimensions of the final data:
 # Bites
-length(craters_P_use$Bites) #256
+length(craters_P_use$Bites) 
 table(craters_P_use$Bites)
 
-length(craters_M_use$Bites) #260
+length(craters_M_use$Bites) 
 table(craters_M_use$Bites)
 
-length(craters_CP_use$Bites) #260
+length(craters_CP_use$Bites) 
 table(craters_CP_use$Bites)
 
 #Bites Bound
-length(craters_P_use$craters_bound_P) #512
+length(craters_P_use$craters_bound_P) 
 table(craters_P_use$craters_bound_P)
 
-length(craters_M_use$craters_bound_M) #520
+length(craters_M_use$craters_bound_M) 
 table(craters_M_use$craters_bound_M)
 
-length(craters_CP_use$craters_bound_CP) #520
+length(craters_CP_use$craters_bound_CP) 
 table(craters_CP_use$craters_bound_CP)
 
 # Patch type
@@ -238,56 +238,56 @@ table(craters_CP_use$PatchType)
 
 # Mins and Maxes
 
-min(craters_P_use$Phenolics_Ref_std) #-0.3670786
-max(craters_P_use$Phenolics_Ref_std) #2.314344
-min(craters_P_use$Phenolics_Pred_std) #-1.21205
-max(craters_P_use$Phenolics_Pred_std) #1.124008
+min(craters_P_use$Phenolics_Ref_std) 
+max(craters_P_use$Phenolics_Ref_std) 
+min(craters_P_use$Phenolics_Pred_std) 
+max(craters_P_use$Phenolics_Pred_std) 
 
-min(craters_M_use$Monoterpenes_Ref_std) #-0.8018102
-max(craters_M_use$Monoterpenes_Ref_std) #1.489232
-min(craters_M_use$Monoterpenes_Pred_std) #-0.9515278
-max(craters_M_use$Monoterpenes_Pred_std) #1.340528
+min(craters_M_use$Monoterpenes_Ref_std) 
+max(craters_M_use$Monoterpenes_Ref_std) 
+min(craters_M_use$Monoterpenes_Pred_std) 
+max(craters_M_use$Monoterpenes_Pred_std) 
 
-min(craters_CP_use$CP_Ref_std) #-0.9465833
-max(craters_CP_use$CP_Ref_std) #1.030761
-min(craters_CP_use$CP_Pred_std) #-1.144643
-max(craters_CP_use$CP_Pred_std) #1.173767
+min(craters_CP_use$CP_Ref_std) 
+max(craters_CP_use$CP_Ref_std) 
+min(craters_CP_use$CP_Pred_std) 
+max(craters_CP_use$CP_Pred_std) 
 
 ##Descriptive Stats
 
 # Phenolics
-mean(craters_P$Phenolics_Ref, na.rm=TRUE) #15.70203
-sd(craters_P$Phenolics_Ref, na.rm=TRUE) #20.88179
-mean(craters_P$Phenolics_newpred, na.rm=TRUE) #23.64035
-sd(craters_P$Phenolics_newpred, na.rm=TRUE) #18.67058
+mean(craters_P$Phenolics_Ref, na.rm=TRUE) 
+sd(craters_P$Phenolics_Ref, na.rm=TRUE) 
+mean(craters_P$Phenolics_newpred, na.rm=TRUE) 
+sd(craters_P$Phenolics_newpred, na.rm=TRUE) 
 
-mean(craters_P_use$Phenolics_Ref_std, na.rm=TRUE) #8.023096e-18
-sd(craters_P_use$Phenolics_Ref_std, na.rm=TRUE) #0.5
-mean(craters_P_use$Phenolics_Pred_std, na.rm=TRUE) #-8.84709e-17
-sd(craters_P_use$Phenolics_Pred_std, na.rm=TRUE) #0.5
+mean(craters_P_use$Phenolics_Ref_std, na.rm=TRUE) 
+sd(craters_P_use$Phenolics_Ref_std, na.rm=TRUE) 
+mean(craters_P_use$Phenolics_Pred_std, na.rm=TRUE) 
+sd(craters_P_use$Phenolics_Pred_std, na.rm=TRUE) 
 
 # Monoterpenes
-mean(craters_M$Monoterpenes_Ref, na.rm=TRUE) #775.2057
-sd(craters_M$Monoterpenes_Ref, na.rm=TRUE) #221.1397
-mean(craters_M$Monoterpenes_newpred, na.rm=TRUE) #664.2266
-sd(craters_M$Monoterpenes_newpred, na.rm=TRUE) #162.703
+mean(craters_M$Monoterpenes_Ref, na.rm=TRUE) 
+sd(craters_M$Monoterpenes_Ref, na.rm=TRUE) 
+mean(craters_M$Monoterpenes_newpred, na.rm=TRUE)
+sd(craters_M$Monoterpenes_newpred, na.rm=TRUE) 
 
-mean(craters_M_use$Monoterpenes_Ref_std, na.rm=TRUE) #-1.479586e-16
-sd(craters_M_use$Monoterpenes_Ref_std, na.rm=TRUE) #0.5
-mean(craters_M_use$Monoterpenes_Pred_std, na.rm=TRUE) #-2.006942e-16
-sd(craters_M_use$Monoterpenes_Pred_std, na.rm=TRUE) #0.5
+mean(craters_M_use$Monoterpenes_Ref_std, na.rm=TRUE) 
+sd(craters_M_use$Monoterpenes_Ref_std, na.rm=TRUE) 
+mean(craters_M_use$Monoterpenes_Pred_std, na.rm=TRUE) 
+sd(craters_M_use$Monoterpenes_Pred_std, na.rm=TRUE) 
 
 #Crude Proteins
 
-mean(craters_CP$CP_Ref, na.rm=TRUE) #12.39462
-sd(craters_CP$CP_Ref, na.rm=TRUE) #1.84591
-mean(craters_CP$CP_newpred, na.rm=TRUE) #12.38399
-sd(craters_CP$CP_newpred, na.rm=TRUE) #1.783406
+mean(craters_CP$CP_Ref, na.rm=TRUE) 
+sd(craters_CP$CP_Ref, na.rm=TRUE) 
+mean(craters_CP$CP_newpred, na.rm=TRUE) 
+sd(craters_CP$CP_newpred, na.rm=TRUE) 
 
-mean(craters_CP_use$CP_Ref_std, na.rm=TRUE) #2.305848e-17
-sd(craters_CP_use$CP_Ref_std, na.rm=TRUE) #0.5
-mean(craters_CP_use$CP_Pred_std, na.rm=TRUE) #3.416071e-18
-sd(craters_CP_use$CP_Pred_std, na.rm=TRUE) #0.5
+mean(craters_CP_use$CP_Ref_std, na.rm=TRUE) 
+sd(craters_CP_use$CP_Ref_std, na.rm=TRUE) 
+mean(craters_CP_use$CP_Pred_std, na.rm=TRUE) 
+sd(craters_CP_use$CP_Pred_std, na.rm=TRUE) 
 
 ```
 
@@ -476,22 +476,22 @@ craters_obs_P <- craters_logo_P$out_data$craters_bound[,1]
 craters_total_P <- craters_logo_P$out_data$craters_bound[,2]
 
 craters_null_P <- apply(null_preds_P,1,mean)
-length(craters_null_P) #256
+length(craters_null_P) 
 craters_ref_P <- apply(ref_preds_P,1,mean)
-length(craters_ref_P) #256
+length(craters_ref_P) 
 craters_pred_P <- apply(pred_preds_P,1,mean)
-length(craters_pred_P) #256
+length(craters_pred_P) 
 
 # Likelihood of observed data, given predicted data. We're looking for the lowest number here (this is a call to the probability distribution = how rampant a likely variable is.
 
--sum(dbinom(craters_obs_P,prob=craters_ref_P/craters_total_P,size=50,log=T),na.rm=T) #Warning: NaNs produced[1] 2845.817
--sum(dbinom(craters_obs_P,prob=craters_null_P/craters_total_P,size=50,log=T),na.rm=T) #Warning: NaNs produced[1] 2944.13
--sum(dbinom(craters_obs_P,prob=craters_pred_P/craters_total_P,size=50,log=T),na.rm=T) #Warning: NaNs produced[1] 2967.901
+-sum(dbinom(craters_obs_P,prob=craters_ref_P/craters_total_P,size=50,log=T),na.rm=T) 
+-sum(dbinom(craters_obs_P,prob=craters_null_P/craters_total_P,size=50,log=T),na.rm=T) 
+-sum(dbinom(craters_obs_P,prob=craters_pred_P/craters_total_P,size=50,log=T),na.rm=T) 
 
 # Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
-mae(craters_null_P,craters_obs_P)  #[1] 10.69453
-mae(craters_ref_P,craters_obs_P) #10.69321
-mae(craters_pred_P, craters_obs_P) #[1] 10.69869
+mae(craters_null_P,craters_obs_P)  
+mae(craters_ref_P,craters_obs_P) 
+mae(craters_pred_P, craters_obs_P) 
 
 ############Monoterpenes
 
@@ -564,23 +564,23 @@ craters_obs_M <- craters_logo_M$out_data$craters_bound[,1]
 craters_total_M <- craters_logo_M$out_data$craters_bound[,2]
 
 craters_null_M <- apply(null_preds_M,1,mean)
-length(craters_null_M) #260
+length(craters_null_M) 
 craters_ref_M <- apply(ref_preds_M,1,mean)
-length(craters_ref_M) #260
+length(craters_ref_M) 
 craters_pred_M <- apply(pred_preds_M,1,mean)
-length(craters_pred_M) #260
+length(craters_pred_M) 
 
 # Likelihood of observed data, given predicted data. We're looking for the lowest number here (this is a call to the probability distribution = how rampant a likely variable is.
 
--sum(dbinom(craters_obs_M,prob=craters_ref_M/craters_total_M,size=50,log=T),na.rm=T) #[1] 2944.016
--sum(dbinom(craters_obs_M,prob=craters_null_M/craters_total_M,size=50,log=T),na.rm=T) #[1] 2923.28
--sum(dbinom(craters_obs_M,prob=craters_pred_M/craters_total_M,size=50,log=T),na.rm=T) #[1] 2752.247
+-sum(dbinom(craters_obs_M,prob=craters_ref_M/craters_total_M,size=50,log=T),na.rm=T) 
+-sum(dbinom(craters_obs_M,prob=craters_null_M/craters_total_M,size=50,log=T),na.rm=T) 
+-sum(dbinom(craters_obs_M,prob=craters_pred_M/craters_total_M,size=50,log=T),na.rm=T) 
 
 # Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
-mae(craters_null_M,craters_obs_M) #[1] 11.06728
+mae(craters_null_M,craters_obs_M) 
 # Run these for all columns of the posterior estimates of mae, and then apply the 95%CI to this).
-mae(craters_ref_M,craters_obs_M) #[1] 11.07364
-mae(craters_pred_M, craters_obs_M) #[1] 11.06924
+mae(craters_ref_M,craters_obs_M) 
+mae(craters_pred_M, craters_obs_M) 
 
 ############CP
 
@@ -652,22 +652,22 @@ craters_obs_CP <- craters_logo_CP$out_data$craters_bound[,1]
 craters_total_CP <- craters_logo_CP$out_data$craters_bound[,2]
 
 craters_null_CP <- apply(null_preds_CP,1,mean)
-length(craters_null_CP) #260
+length(craters_null_CP) 
 craters_ref_CP <- apply(ref_preds_CP,1,mean)
-length(craters_ref_CP) #260
+length(craters_ref_CP) 
 craters_pred_CP <- apply(pred_preds_CP,1,mean)
-length(craters_pred_CP) #260
+length(craters_pred_CP) 
 
 # Likelihood of observed data, given predicted data. We're looking for the lowest number here (this is a call to the probability distribution = how rampant a likely variable is.
 
--sum(dbinom(craters_obs_CP,prob=craters_ref_CP/craters_total_CP,size=50,log=T),na.rm=T) #[1] 2999.712
--sum(dbinom(craters_obs_CP,prob=craters_null_CP/craters_total_CP,size=50,log=T),na.rm=T) #[1] 2926.449
--sum(dbinom(craters_obs_CP,prob=craters_pred_CP/craters_total_CP,size=50,log=T),na.rm=T) #[1] 2972.656
+-sum(dbinom(craters_obs_CP,prob=craters_ref_CP/craters_total_CP,size=50,log=T),na.rm=T) 
+-sum(dbinom(craters_obs_CP,prob=craters_null_CP/craters_total_CP,size=50,log=T),na.rm=T) 
+-sum(dbinom(craters_obs_CP,prob=craters_pred_CP/craters_total_CP,size=50,log=T),na.rm=T) 
 
 # Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. # Run these for all columns of the posterior estimates of mae, and then apply the 95%CI to this).
-mae(craters_null_CP,craters_obs_CP) #11.06701
-mae(craters_ref_CP,craters_obs_CP) #11.05621
-mae(craters_pred_CP, craters_obs_CP) #11.06274
+mae(craters_null_CP,craters_obs_CP) 
+mae(craters_ref_CP,craters_obs_CP) 
+mae(craters_pred_CP, craters_obs_CP) 
 
 ```
 
@@ -698,12 +698,12 @@ pred_craters_posteriors_M <- data.frame(mPRED_Craters_single_M)
 ref_craters_posteriors_CP <- data.frame(mREF_Craters_single_CP)
 pred_craters_posteriors_CP <- data.frame(mPRED_Craters_single_CP)
 
-dim(ref_craters_posteriors_P) #20000    19
-dim(pred_craters_posteriors_P) #20000    19
-dim(ref_craters_posteriors_M) #20000    20
-dim(pred_craters_posteriors_M) #20000    20
-dim(ref_craters_posteriors_CP) #20000    20
-dim(pred_craters_posteriors_CP) #20000    20
+dim(ref_craters_posteriors_P) 
+dim(pred_craters_posteriors_P) 
+dim(ref_craters_posteriors_M) 
+dim(pred_craters_posteriors_M) 
+dim(ref_craters_posteriors_CP) 
+dim(pred_craters_posteriors_CP) 
 
 ```
 
@@ -714,16 +714,16 @@ What is the percentage of draws that are either positive of negative?
 ```{r}
 
 # Phenolics
-length(which(ref_craters_posteriors_P$Phenolics_Ref_std>0))/length(ref_craters_posteriors_P$Phenolics_Ref_std) #0
-length(which(ref_craters_posteriors_P$Phenolics_Ref_std<0))/length(ref_craters_posteriors_P$Phenolics_Ref_std)#100
+length(which(ref_craters_posteriors_P$Phenolics_Ref_std>0))/length(ref_craters_posteriors_P$Phenolics_Ref_std) 
+length(which(ref_craters_posteriors_P$Phenolics_Ref_std<0))/length(ref_craters_posteriors_P$Phenolics_Ref_std)
 
 # Monoterpenes
-length(which(ref_craters_posteriors_M$Monoterpenes_Ref_std>0))/length(ref_craters_posteriors_M$Monoterpenes_Ref_std) #0.0062
-length(which(ref_craters_posteriors_M$Monoterpenes_Ref_std<0))/length(ref_craters_posteriors_M$Monoterpenes_Ref_std) #0.9938
+length(which(ref_craters_posteriors_M$Monoterpenes_Ref_std>0))/length(ref_craters_posteriors_M$Monoterpenes_Ref_std) 
+length(which(ref_craters_posteriors_M$Monoterpenes_Ref_std<0))/length(ref_craters_posteriors_M$Monoterpenes_Ref_std) 
 
 # Crude Proteins
-length(which(ref_craters_posteriors_CP$CP_Ref_std>0))/length(ref_craters_posteriors_CP$CP_Ref_std) #1
-length(which(ref_craters_posteriors_CP$CP_Ref_std<0))/length(ref_craters_posteriors_CP$CP_Ref_std) #0
+length(which(ref_craters_posteriors_CP$CP_Ref_std>0))/length(ref_craters_posteriors_CP$CP_Ref_std) 
+length(which(ref_craters_posteriors_CP$CP_Ref_std<0))/length(ref_craters_posteriors_CP$CP_Ref_std) 
 ```
 
 # Probability of Direction - Predicted Chemistry
@@ -735,16 +735,16 @@ Note that we never report probabilities of 100% in papers--instead write >99%
 ```{r}
 
 # Phenolics
-length(which(pred_craters_posteriors_P$Phenolics_Pred_std>0))/length(pred_craters_posteriors_P$Phenolics_Pred_std) #0
-length(which(pred_craters_posteriors_P$Phenolics_Pred_std<0))/length(pred_craters_posteriors_P$Phenolics_Pred_std) #1
+length(which(pred_craters_posteriors_P$Phenolics_Pred_std>0))/length(pred_craters_posteriors_P$Phenolics_Pred_std) 
+length(which(pred_craters_posteriors_P$Phenolics_Pred_std<0))/length(pred_craters_posteriors_P$Phenolics_Pred_std) 
 
 # Monoterpenes
-length(which(pred_craters_posteriors_M$Monoterpenes_Pred_std>0))/length(pred_craters_posteriors_M$Monoterpenes_Pred_std) #0
-length(which(pred_craters_posteriors_M$Monoterpenes_Pred_std<0))/length(pred_craters_posteriors_M$Monoterpenes_Pred_std) #1
+length(which(pred_craters_posteriors_M$Monoterpenes_Pred_std>0))/length(pred_craters_posteriors_M$Monoterpenes_Pred_std) 
+length(which(pred_craters_posteriors_M$Monoterpenes_Pred_std<0))/length(pred_craters_posteriors_M$Monoterpenes_Pred_std) 
 
 # Crude Proteins
-length(which(pred_craters_posteriors_CP$CP_Pred_std>0))/length(pred_craters_posteriors_CP$CP_Pred_std) #1
-length(which(pred_craters_posteriors_CP$CP_Pred_std<0))/length(pred_craters_posteriors_CP$CP_Pred_std) #0
+length(which(pred_craters_posteriors_CP$CP_Pred_std>0))/length(pred_craters_posteriors_CP$CP_Pred_std) 
+length(which(pred_craters_posteriors_CP$CP_Pred_std<0))/length(pred_craters_posteriors_CP$CP_Pred_std) 
 ```
 
 # Effect Size Min & Max - Reference Chemistry
@@ -752,8 +752,8 @@ length(which(pred_craters_posteriors_CP$CP_Pred_std<0))/length(pred_craters_post
 ```{r}
 
 # Referencing min and max from data frame
-chemm$Ref_Min[which(chemm$Site=="Craters" & chemm$Chemical=="Crude Protein")] #-0.9465833
-chemm$Ref_Max[which(chemm$Site=="Craters" & chemm$Chemical=="Crude Protein")] #1.030761
+chemm$Ref_Min[which(chemm$Site=="Craters" & chemm$Chemical=="Crude Protein")] 
+chemm$Ref_Max[which(chemm$Site=="Craters" & chemm$Chemical=="Crude Protein")]
 
 # Setting up an empty vector to fill in with predictions
 predicted_diff_Phenolics_ref <- rep(NA,times=ncol(ref_craters_posteriors_P))
@@ -773,9 +773,6 @@ predicted_diff_Phenolics_ref[i]<-max_pred_P-min_pred_P #This is the difference w
 
 quantile(predicted_diff_Phenolics_ref,c(0.025,0.5,0.975)) 
 
-#       2.5%         50%       97.5% 
-#-0.2638448 -0.2248960 -0.2005545 
-
 # Monoterpenes
 for(i in 1:ncol(ref_craters_posteriors_M)){
 
@@ -788,8 +785,6 @@ predicted_diff_Monoterpenes_ref[i]<-max_pred_M-min_pred_M #This is the differenc
 }  
 
 quantile(predicted_diff_Monoterpenes_ref,c(0.025,0.5,0.975)) 
-#       2.5%         50%       97.5% 
-#-0.08711025 -0.05940152 -0.03004152 
 
 # CP
 for(i in 1:ncol(ref_craters_posteriors_CP)){
@@ -803,8 +798,6 @@ predicted_diff_cp_ref[i]<-max_pred_CP-min_pred_CP #This is the difference we wil
   }  
 
 quantile(predicted_diff_cp_ref,c(0.025,0.5,0.975)) 
-#     2.5%       50%     97.5% 
-#0.2709220 0.3009621 0.3558108 
 
 ```
 
@@ -813,8 +806,8 @@ quantile(predicted_diff_cp_ref,c(0.025,0.5,0.975))
 ```{r}
 
 # Referencing min and max from data frame
-chemm$Pred_Min[which(chemm$Site=="Craters" & chemm$Chemical=="Crude Protein")] #-1.144643
-chemm$Pred_Max[which(chemm$Site=="Craters" & chemm$Chemical=="Crude Protein")] #1.173767
+chemm$Pred_Min[which(chemm$Site=="Craters" & chemm$Chemical=="Crude Protein")] 
+chemm$Pred_Max[which(chemm$Site=="Craters" & chemm$Chemical=="Crude Protein")]
 
 # Setting up an empty vector to fill in with predictions
 predicted_diff_Phenolics_pred <- rep(NA,times=ncol(pred_craters_posteriors_P))
@@ -833,8 +826,6 @@ predicted_diff_Phenolics_pred[i]<-max_pred_P-min_pred_P
 }  
 
 quantile(predicted_diff_Phenolics_pred,c(0.025,0.5,0.975)) 
-#       2.5%         50%       97.5% 
-#-0.1958070 -0.1582912 -0.1398663 
 
 # Monoterpenes
 for(i in 1:ncol(pred_craters_posteriors_M)){
@@ -848,8 +839,6 @@ predicted_diff_Monoterpenes_pred[i]<-max_pred_M-min_pred_M #This is the differen
 }  
 
 quantile(predicted_diff_Monoterpenes_pred,c(0.025,0.5,0.975)) 
-#        2.5%          50%        97.5% 
-#-0.5142633 -0.4465099 -0.4207765 
 
 # CP
 for(i in 1:ncol(pred_craters_posteriors_CP)){
@@ -863,8 +852,7 @@ predicted_diff_cp_pred[i]<-max_pred_CP-min_pred_CP #This is the difference we wi
   }  
 
 quantile(predicted_diff_cp_pred,c(0.025,0.5,0.975)) 
-#     2.5%       50%     97.5% 
-#0.2154880 0.2668801 0.3005122 
+
 
 ```
 
