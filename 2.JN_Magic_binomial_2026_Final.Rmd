@@ -127,35 +127,35 @@ unique(JN_Magic_CP$Bites)
 
 ## Check out the dimensions of the input data:
 # Bites
-length(JN_Magic_P$Bites) #531
+length(JN_Magic_P$Bites) 
 table(JN_Magic_P$Bites)
 
-length(JN_Magic_M$Bites) #578 
+length(JN_Magic_M$Bites)
 table(JN_Magic_M$Bites)
 
-length(JN_Magic_CP$Bites) #587
+length(JN_Magic_CP$Bites)
 table(JN_Magic_CP$Bites)
 
 # Season
-table(JN_Magic_P$Season) #summer 290 #winter 241 
-table(JN_Magic_M$Season) #summer 334 #winter 244 
-table(JN_Magic_CP$Season) #summer 343 #winter 244 
+table(JN_Magic_P$Season) 
+table(JN_Magic_M$Season)  
+table(JN_Magic_CP$Season) 
 
 # Species
-table(JN_Magic_P$Species) #dwarf 97, dwarf_comp 41, wyo_comp 108, wyoming 285
-table(JN_Magic_M$Species) #dwarf 104, dwarf_comp 44, wyo_comp 116, wyoming 314
-table(JN_Magic_CP$Species) #dwarf 107, dwarf_comp 46, wyo_comp 115, wyoming 319
+table(JN_Magic_P$Species) 
+table(JN_Magic_M$Species) 
+table(JN_Magic_CP$Species) 
 
 # Plant height
-table(JN_Magic_P$PlantSize) #table of extent 0
-table(JN_Magic_M$PlantSize) #table of extent 0
-table(JN_Magic_CP$PlantSize) #table of extent 0
+table(JN_Magic_P$PlantSize) 
+table(JN_Magic_M$PlantSize)
+table(JN_Magic_CP$PlantSize) 
 # Not available at this site
 
 # Patch type
-table(JN_Magic_P$PatchType) #dwarf 138, off 201, on 192
-table(JN_Magic_M$PatchType) #dwarf 148, off 210, on 220
-table(JN_Magic_CP$PatchType) #dwarf 153, off 210, on 224
+table(JN_Magic_P$PatchType)
+table(JN_Magic_M$PatchType) 
+table(JN_Magic_CP$PatchType) 
 
 # Patch_ID here is the random effect
 table(JN_Magic_P$Patch_ID)[-which(table(JN_Magic_P$Patch_ID)==0)] #named integer(0)
@@ -189,76 +189,76 @@ JN_Magic_CP_use$Bites_Binomial <- ifelse(JN_Magic_CP_use$Bites > 0, 1, 0)
 
 ## Check out the dimensions of the final data:
 # Bites
-length(JN_Magic_P_use$Bites_Binomial) #382
+length(JN_Magic_P_use$Bites_Binomial) 
 table(JN_Magic_P_use$Bites)
 
-length(JN_Magic_M_use$Bites_Binomial) #418
+length(JN_Magic_M_use$Bites_Binomial) 
 table(JN_Magic_M_use$Bites)
 
-length(JN_Magic_CP_use$Bites_Binomial) #426
+length(JN_Magic_CP_use$Bites_Binomial) 
 table(JN_Magic_CP_use$Bites)
 
 # Season
-table(JN_Magic_P_use$Season) #summer 215, winter 167
-table(JN_Magic_M_use$Season) #summer 247, winter 171
-table(JN_Magic_CP_use$Season) #summer 255, winter 171
+table(JN_Magic_P_use$Season) 
+table(JN_Magic_M_use$Season) 
+table(JN_Magic_CP_use$Season) 
 
 # Patch type
-table(JN_Magic_P_use$PatchType) #dwarf 97, off 146, on 139
-table(JN_Magic_M_use$PatchType) #dwarf 104, off 154, on 160
-table(JN_Magic_CP_use$PatchType) #dwarf 107, off 155, on 164
+table(JN_Magic_P_use$PatchType) 
+table(JN_Magic_M_use$PatchType) 
+table(JN_Magic_CP_use$PatchType) 
 
 #Mins and Maxes
 
-min(JN_Magic_P_use$Phenolics_Ref_std) #-0.7762658
-max(JN_Magic_P_use$Phenolics_Ref_std) #3.383833
-min(JN_Magic_P_use$Phenolics_Pred_std) #-1.376069
-max(JN_Magic_P_use$Phenolics_Pred_std) #1.392438
+min(JN_Magic_P_use$Phenolics_Ref_std) 
+max(JN_Magic_P_use$Phenolics_Ref_std) 
+min(JN_Magic_P_use$Phenolics_Pred_std) 
+max(JN_Magic_P_use$Phenolics_Pred_std) 
 
-min(JN_Magic_M_use$Monoterpenes_Ref_std) #-1.020171
-max(JN_Magic_M_use$Monoterpenes_Ref_std) #1.913172
-min(JN_Magic_M_use$Monoterpenes_Pred_std) #-1.153206
-max(JN_Magic_M_use$Monoterpenes_Pred_std) #1.281484
+min(JN_Magic_M_use$Monoterpenes_Ref_std) 
+max(JN_Magic_M_use$Monoterpenes_Ref_std) 
+min(JN_Magic_M_use$Monoterpenes_Pred_std) 
+max(JN_Magic_M_use$Monoterpenes_Pred_std) 
 
-min(JN_Magic_CP_use$CP_Ref_std) #-3.144783
-max(JN_Magic_CP_use$CP_Ref_std) #1.785229
-min(JN_Magic_CP_use$CP_Pred_std) #-1.558475
-max(JN_Magic_CP_use$CP_Pred_std) #1.877752
+min(JN_Magic_CP_use$CP_Ref_std) 
+max(JN_Magic_CP_use$CP_Ref_std) 
+min(JN_Magic_CP_use$CP_Pred_std) 
+max(JN_Magic_CP_use$CP_Pred_std) 
 
 ## Descriptive Stats
 
 # Phenolics
-mean(JN_Magic_P$Phenolics_Ref, na.rm=TRUE) #10.94627
-sd(JN_Magic_P$Phenolics_Ref, na.rm=TRUE) #6.084433
-mean(JN_Magic_P$Phenolics_newpred, na.rm=TRUE) #11.15397
-sd(JN_Magic_P$Phenolics_newpred, na.rm=TRUE) #4.386831
+mean(JN_Magic_P$Phenolics_Ref, na.rm=TRUE) 
+sd(JN_Magic_P$Phenolics_Ref, na.rm=TRUE) 
+mean(JN_Magic_P$Phenolics_newpred, na.rm=TRUE) 
+sd(JN_Magic_P$Phenolics_newpred, na.rm=TRUE) 
 
-mean(JN_Magic_P_use$Phenolics_Ref_std, na.rm=TRUE) #-0.00351068
-sd(JN_Magic_P_use$Phenolics_Ref_std, na.rm=TRUE) #0.5331163
-mean(JN_Magic_P_use$Phenolics_Pred_std, na.rm=TRUE) #-0.008021606
-sd(JN_Magic_P_use$Phenolics_Pred_std, na.rm=TRUE) #0.5114148
+mean(JN_Magic_P_use$Phenolics_Ref_std, na.rm=TRUE) 
+sd(JN_Magic_P_use$Phenolics_Ref_std, na.rm=TRUE) 
+mean(JN_Magic_P_use$Phenolics_Pred_std, na.rm=TRUE) 
+sd(JN_Magic_P_use$Phenolics_Pred_std, na.rm=TRUE) 
 
 # Monoterpenes
-mean(JN_Magic_M$Monoterpenes_Ref, na.rm=TRUE) #787.6531
-sd(JN_Magic_M$Monoterpenes_Ref, na.rm=TRUE) #332.5367
-mean(JN_Magic_M$Monoterpenes_newpred, na.rm=TRUE) #790.5258
-sd(JN_Magic_M$Monoterpenes_newpred, na.rm=TRUE) #306.3466
+mean(JN_Magic_M$Monoterpenes_Ref, na.rm=TRUE) 
+sd(JN_Magic_M$Monoterpenes_Ref, na.rm=TRUE) 
+mean(JN_Magic_M$Monoterpenes_newpred, na.rm=TRUE) 
+sd(JN_Magic_M$Monoterpenes_newpred, na.rm=TRUE) 
 
-mean(JN_Magic_M_use$Monoterpenes_Ref_std, na.rm=TRUE) #-0.006749789
-sd(JN_Magic_M_use$Monoterpenes_Ref_std, na.rm=TRUE) #0.5160459
-mean(JN_Magic_M_use$Monoterpenes_Pred_std, na.rm=TRUE) #0.003263942
-sd(JN_Magic_M_use$Monoterpenes_Pred_std, na.rm=TRUE) #0.5185673
+mean(JN_Magic_M_use$Monoterpenes_Ref_std, na.rm=TRUE) 
+sd(JN_Magic_M_use$Monoterpenes_Ref_std, na.rm=TRUE) 
+mean(JN_Magic_M_use$Monoterpenes_Pred_std, na.rm=TRUE) 
+sd(JN_Magic_M_use$Monoterpenes_Pred_std, na.rm=TRUE) 
 
 # Crude Proteins
-mean(JN_Magic_CP$CP_Ref, na.rm=TRUE) #10.32099
-sd(JN_Magic_CP$CP_Ref, na.rm=TRUE) #1.64097
-mean(JN_Magic_CP$CP_newpred, na.rm=TRUE) #10.32401
-sd(JN_Magic_CP$CP_newpred, na.rm=TRUE) #1.217685
+mean(JN_Magic_CP$CP_Ref, na.rm=TRUE) 
+sd(JN_Magic_CP$CP_Ref, na.rm=TRUE) 
+mean(JN_Magic_CP$CP_newpred, na.rm=TRUE) 
+sd(JN_Magic_CP$CP_newpred, na.rm=TRUE) 
 
-mean(JN_Magic_CP_use$CP_Ref_std, na.rm=TRUE) #0.008925703
-sd(JN_Magic_CP_use$CP_Ref_std, na.rm=TRUE) #0.5228426
-mean(JN_Magic_CP_use$CP_Pred_std, na.rm=TRUE) #0.02435716
-sd(JN_Magic_CP_use$CP_Pred_std, na.rm=TRUE) #0.5136612
+mean(JN_Magic_CP_use$CP_Ref_std, na.rm=TRUE) 
+sd(JN_Magic_CP_use$CP_Ref_std, na.rm=TRUE) 
+mean(JN_Magic_CP_use$CP_Pred_std, na.rm=TRUE) 
+sd(JN_Magic_CP_use$CP_Pred_std, na.rm=TRUE)
 
 
 ```
@@ -451,18 +451,18 @@ JN_Magic_total_P <- JN_Magic_logo_P$out_data$Bites
 # 1 = whether you're doing the mean across rows or columns
 # Trying to predict across patchm, to create something in a list. 
 JN_Magic_null_P <- apply(null_preds_P,1,mean)
-length(JN_Magic_null_P) #382
+length(JN_Magic_null_P) 
 JN_Magic_ref_P <- apply(ref_preds_P,1,mean)
-length(JN_Magic_ref_P) #382
+length(JN_Magic_ref_P) 
 JN_Magic_pred_P <- apply(pred_preds_P,1,mean)
-length(JN_Magic_pred_P) #382
+length(JN_Magic_pred_P) 
 
 # Likelihood of observed data, given predicted data. We're looking for the lowest number here (this is a call to the probability distribution = how rampant a likely variable is. Given the distribution how likely is it that we observe one value conditional on the probability of being bitten). Remember, we are avoiding over fitting by leaving out data. 
 
 # Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
-mae(JN_Magic_null_P,JN_Magic_obs_P) #Run these for all columns of the posterior estimates of mae, and then apply the 95%CI to this). #1.133652
-mae(JN_Magic_ref_P,JN_Magic_obs_P) #1.1337
-mae(JN_Magic_pred_P, JN_Magic_obs_P) #1.133909
+mae(JN_Magic_null_P,JN_Magic_obs_P) 
+mae(JN_Magic_ref_P,JN_Magic_obs_P) 
+mae(JN_Magic_pred_P, JN_Magic_obs_P)
 
 #################Monoterpenes
 
@@ -538,18 +538,18 @@ JN_Magic_total_M <- JN_Magic_logo_M$out_data$Bites
 # 1 = whether you're doing the mean across rows or columns
 # Trying to predict across patchm, to create something in a list. 
 JN_Magic_null_M <- apply(null_preds_M,1,mean)
-length(JN_Magic_null_M) #418
+length(JN_Magic_null_M) 
 JN_Magic_ref_M <- apply(ref_preds_M,1,mean)
-length(JN_Magic_ref_M) #418
+length(JN_Magic_ref_M) 
 JN_Magic_pred_M <- apply(pred_preds_M,1,mean)
-length(JN_Magic_pred_M) #418
+length(JN_Magic_pred_M) 
 
 # Likelihood of observed data, given predicted data. We're looking for the lowest number here (this is a call to the probability distribution = how rampant a likely variable is. Given the distribution how likely is it that we observe one value conditional on the probability of being bitten). Remember, we are avoiding over fitting by leaving out data. 
 
 # Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
-mae(JN_Magic_null_M,JN_Magic_obs_M) #Run these for all columns of the posterior estimates of mae, and then apply the 95%CI to this). #1.019424
-mae(JN_Magic_ref_M,JN_Magic_obs_M) #1.017725
-mae(JN_Magic_pred_M, JN_Magic_obs_M) #1.017389
+mae(JN_Magic_null_M,JN_Magic_obs_M) #Run these for all columns of the posterior estimates of mae, and then apply the 95%CI to this). 
+mae(JN_Magic_ref_M,JN_Magic_obs_M) 
+mae(JN_Magic_pred_M, JN_Magic_obs_M) 
 
 #######################CP
 
@@ -625,18 +625,18 @@ JN_Magic_total_CP <- JN_Magic_logo_CP$out_data$Bites
 # 1 = whether you're doing the mean across rows or columns
 # Trying to predict across patchm, to create something in a list. 
 JN_Magic_null_CP <-apply(null_preds_CP,1,mean)
-length(JN_Magic_null_CP) #426
+length(JN_Magic_null_CP) 
 JN_Magic_ref_CP <-apply(ref_preds_CP,1,mean)
-length(JN_Magic_ref_CP) #426
+length(JN_Magic_ref_CP) 
 JN_Magic_pred_CP <-apply(pred_preds_CP,1,mean)
-length(JN_Magic_pred_CP) #426
+length(JN_Magic_pred_CP) 
 
 # Likelihood of observed data, given predicted data. We're looking for the lowest number here (this is a call to the probability distribution = how rampant a likely variable is. Given the distribution how likely is it that we observe one value conditional on the probability of being bitten). Remember, we are avoiding over fitting by leaving out data. 
 
 # Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
-mae(JN_Magic_null_CP,JN_Magic_obs_CP) #Run these for all columns of the posterior estimates of mae, and then apply the 95%CI to this). #1.000369
-mae(JN_Magic_ref_CP,JN_Magic_obs_CP) #1.017181
-mae(JN_Magic_pred_CP, JN_Magic_obs_CP) #1.087752
+mae(JN_Magic_null_CP,JN_Magic_obs_CP) #Run these for all columns of the posterior estimates of mae, and then apply the 95%CI to this). 
+mae(JN_Magic_ref_CP,JN_Magic_obs_CP) 
+mae(JN_Magic_pred_CP, JN_Magic_obs_CP) 
 ```
 
 # General posterior draw descriptive statistics
@@ -670,12 +670,12 @@ pred_JN_posteriors_M <- data.frame(mPRED_JN_Magic_single_M)
 ref_JN_posteriors_CP <- data.frame(mREF_JN_Magic_single_CP)
 pred_JN_posteriors_CP <- data.frame(mPRED_JN_Magic_single_CP)
 
-dim(ref_JN_posteriors_P) #20000    53
-dim(pred_JN_posteriors_P) #20000    53
-dim(ref_JN_posteriors_M) #20000    53
-dim(pred_JN_posteriors_M) #20000    53
-dim(ref_JN_posteriors_CP) #20000    53
-dim(pred_JN_posteriors_CP) #20000    53
+dim(ref_JN_posteriors_P) 
+dim(pred_JN_posteriors_P) 
+dim(ref_JN_posteriors_M) 
+dim(pred_JN_posteriors_M) 
+dim(ref_JN_posteriors_CP) 
+dim(pred_JN_posteriors_CP) 
 
 ```
 
@@ -685,16 +685,16 @@ What is the percentage of draws that are either positive of negative?
 
 ```{r}
 # Phenolics
-length(which(ref_JN_posteriors_P$Phenolics_Ref_std>0))/length(ref_JN_posteriors_P$Phenolics_Ref_std) #0.89445
-length(which(ref_JN_posteriors_P$Phenolics_Ref_std<0))/length(ref_JN_posteriors_P$Phenolics_Ref_std) #0.10555
+length(which(ref_JN_posteriors_P$Phenolics_Ref_std>0))/length(ref_JN_posteriors_P$Phenolics_Ref_std) 
+length(which(ref_JN_posteriors_P$Phenolics_Ref_std<0))/length(ref_JN_posteriors_P$Phenolics_Ref_std) 
 
 # Monoterpenes
-length(which(ref_JN_posteriors_M$Monoterpenes_Ref_std>0))/length(ref_JN_posteriors_M$Monoterpenes_Ref_std) #0.9777
-length(which(ref_JN_posteriors_M$Monoterpenes_Ref_std<0))/length(ref_JN_posteriors_M$Monoterpenes_Ref_std) #0.0223
+length(which(ref_JN_posteriors_M$Monoterpenes_Ref_std>0))/length(ref_JN_posteriors_M$Monoterpenes_Ref_std) 
+length(which(ref_JN_posteriors_M$Monoterpenes_Ref_std<0))/length(ref_JN_posteriors_M$Monoterpenes_Ref_std) 
 
 # Crude Proteins
-length(which(ref_JN_posteriors_CP$CP_Ref_std>0))/length(ref_JN_posteriors_CP$CP_Ref_std) #1
-length(which(ref_JN_posteriors_CP$CP_Ref_std<0))/length(ref_JN_posteriors_CP$CP_Ref_std) #0
+length(which(ref_JN_posteriors_CP$CP_Ref_std>0))/length(ref_JN_posteriors_CP$CP_Ref_std) 
+length(which(ref_JN_posteriors_CP$CP_Ref_std<0))/length(ref_JN_posteriors_CP$CP_Ref_std) 
 
 ```
 
@@ -705,16 +705,16 @@ What is the percentage of draws that are either positive of negative?
 ```{r}
 
 # Phenolics
-length(which(pred_JN_posteriors_P$Phenolics_Pred_std>0))/length(pred_JN_posteriors_P$Phenolics_Pred_std) #0.9381
-length(which(pred_JN_posteriors_P$Phenolics_Pred_std<0))/length(pred_JN_posteriors_P$Phenolics_Pred_std) #0.06305
+length(which(pred_JN_posteriors_P$Phenolics_Pred_std>0))/length(pred_JN_posteriors_P$Phenolics_Pred_std) 
+length(which(pred_JN_posteriors_P$Phenolics_Pred_std<0))/length(pred_JN_posteriors_P$Phenolics_Pred_std) 
 
 # Monoterpenes
-length(which(pred_JN_posteriors_M$Monoterpenes_Pred_std>0))/length(pred_JN_posteriors_M$Monoterpenes_Pred_std) #0.96275
-length(which(pred_JN_posteriors_M$Monoterpenes_Pred_std<0))/length(pred_JN_posteriors_M$Monoterpenes_Pred_std) #0.03725
+length(which(pred_JN_posteriors_M$Monoterpenes_Pred_std>0))/length(pred_JN_posteriors_M$Monoterpenes_Pred_std) 
+length(which(pred_JN_posteriors_M$Monoterpenes_Pred_std<0))/length(pred_JN_posteriors_M$Monoterpenes_Pred_std) 
 
 # Crude Proteins
-length(which(pred_JN_posteriors_CP$CP_Pred_std>0))/length(pred_JN_posteriors_CP$CP_Pred_std) #1
-length(which(pred_JN_posteriors_CP$CP_Pred_std<0))/length(pred_JN_posteriors_CP$CP_Pred_std) #0
+length(which(pred_JN_posteriors_CP$CP_Pred_std>0))/length(pred_JN_posteriors_CP$CP_Pred_std) 
+length(which(pred_JN_posteriors_CP$CP_Pred_std<0))/length(pred_JN_posteriors_CP$CP_Pred_std) 
 
 ```
 
@@ -743,9 +743,6 @@ predicted_diff_Phenolics_ref[i] <- max_pred_P-min_pred_P # This is the differenc
 }  
 
 quantile(predicted_diff_Phenolics_ref,c(0.025,0.5,0.975))
-#       2.5%         50%       97.5% 
-#-0.01835510  0.08762001  1.12895019 
-
 
 # Monoterpenes
 for(i in 1:ncol(ref_JN_posteriors_M)){
@@ -759,8 +756,6 @@ predicted_diff_Monoterpenes_ref[i] <- max_pred_M-min_pred_M # This is the differ
 }  
 
 quantile(predicted_diff_Monoterpenes_ref,c(0.025,0.5,0.975)) 
-#       2.5%          50%        97.5% 
-#0.004518973 0.100605431 0.339281279
 
 # CP
 
@@ -775,10 +770,6 @@ predicted_diff_cp_ref[i] <- max_pred_CP-min_pred_CP # This is the difference we 
   }  
 
 quantile(predicted_diff_cp_ref,c(0.025,0.5,0.975)) 
-
-#      2.5%        50%      97.5% 
-#0.02837297 0.18236810 0.57020162 
-
 
 ```
 
@@ -807,8 +798,6 @@ predicted_diff_Phenolics_pred[i] <- max_pred_P-min_pred_P # This is the differen
 }  
 
 quantile(predicted_diff_Phenolics_pred,c(0.025,0.5,0.975)) 
-#        2.5%          50%        97.5% 
-#-0.02559411  0.04017733  0.16882918 
 
 # Monoterpenes
 for(i in 1:ncol(pred_JN_posteriors_M)){
@@ -822,8 +811,6 @@ predicted_diff_Monoterpenes_pred[i] <- max_pred_M-min_pred_M # This is the diffe
 }  
 
 quantile(predicted_diff_Monoterpenes_pred,c(0.025,0.5,0.975)) 
-#      2.5%        50%      97.5% 
-#-0.009440813  0.035605060  0.094180903 
 
 # CP
 for(i in 1:ncol(pred_JN_posteriors_CP)){
@@ -837,7 +824,5 @@ predicted_diff_cp_pred[i] <- max_pred_CP-min_pred_CP # This is the difference we
   }  
 
 quantile(predicted_diff_cp_pred,c(0.025,0.5,0.975)) 
-#     2.5%       50%     97.5% 
-#0.1201562 0.3433512 0.6886870 
 
 ```
