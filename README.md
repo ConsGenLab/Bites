@@ -1,7 +1,6 @@
 # Bites
 
-**Title: Linking near infrared spectral traits and phytochemistry to browsing intensity by vertebrate herbivores
-**
+**Title:**Linking near infrared spectral traits and phytochemistry to browsing intensity by vertebrate herbivores
 
 **Abstract:**
 
