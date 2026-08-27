@@ -127,39 +127,39 @@ unique(KG_Magic_CP$Bites)
 
 ## Check out the dimensions of the input data:
 # Bites
-length(KG_Magic_P$Bites) #428
+length(KG_Magic_P$Bites) 
 table(KG_Magic_P$Bites)
 
-length(KG_Magic_M$Bites) #498 
+length(KG_Magic_M$Bites) 
 table(KG_Magic_M$Bites)
 
-length(KG_Magic_CP$Bites) #499
+length(KG_Magic_CP$Bites) 
 table(KG_Magic_CP$Bites)
 
 # Season
-table(KG_Magic_P$Season) #Spring = 350, Winter = 78
-table(KG_Magic_M$Season) #Spring = 404, Winter = 94
-table(KG_Magic_CP$Season) #Spring = 405, Winter = 94
+table(KG_Magic_P$Season) 
+table(KG_Magic_M$Season) 
+table(KG_Magic_CP$Season) 
 
 # Species
-table(KG_Magic_P$Species) #3-tip = 8, Dwarf = 2, Wyoming = 418
-table(KG_Magic_M$Species) #3-tip = 8, Dwarf = 5, Wyoming = 485
-table(KG_Magic_CP$Species) #3-tip = 8, Dwarf = 5, Wyoming = 486
+table(KG_Magic_P$Species) 
+table(KG_Magic_M$Species) 
+table(KG_Magic_CP$Species) 
 
 # Plant height # Not available at this site
-table(KG_Magic_P$PlantSize) #table of extent 0
-table(KG_Magic_M$PlantSize) #table of extent 0
-table(KG_Magic_CP$PlantSize) #table of extent 0
+table(KG_Magic_P$PlantSize) 
+table(KG_Magic_M$PlantSize) 
+table(KG_Magic_CP$PlantSize) 
 
 # Patch type
-table(KG_Magic_P$PatchType) #Off = 244, On = 184
-table(KG_Magic_M$PatchType) #Off = 282, On = 216
-table(KG_Magic_CP$PatchType) #Off = 283, On = 216
+table(KG_Magic_P$PatchType) 
+table(KG_Magic_M$PatchType) 
+table(KG_Magic_CP$PatchType) 
 
 #Patch_ID here is the random effect # Double check this
-table(KG_Magic_P$Patch_ID)[-which(table(KG_Magic_P$Patch_ID)==0)] #named integer(0)
-table(KG_Magic_M$Patch_ID)[-which(table(KG_Magic_P$Patch_ID)==0)] #named integer(0)
-table(KG_Magic_CP$Patch_ID)[-which(table(KG_Magic_P$Patch_ID)==0)] #named integer(0)
+table(KG_Magic_P$Patch_ID)[-which(table(KG_Magic_P$Patch_ID)==0)] 
+table(KG_Magic_M$Patch_ID)[-which(table(KG_Magic_P$Patch_ID)==0)] 
+table(KG_Magic_CP$Patch_ID)[-which(table(KG_Magic_P$Patch_ID)==0)] 
 
 # Standardize our covariates
 # Putting all of the covariates on the same scale 
@@ -183,75 +183,75 @@ KG_Magic_CP_use <- na.omit(data.frame(Bites=KG_Magic_CP$Bites, CP_Pred_std=KG_Ma
 
 ## Check out the dimensions of the final data. Remember, NAs have been removed:
 # Bites
-length(KG_Magic_P_use$Bites) #428
+length(KG_Magic_P_use$Bites) 
 table(KG_Magic_P_use$Bites)
 
-length(KG_Magic_M_use$Bites) #486
+length(KG_Magic_M_use$Bites) 
 table(KG_Magic_M_use$Bites)
 
-length(KG_Magic_CP_use$Bites) #487
+length(KG_Magic_CP_use$Bites) 
 table(KG_Magic_CP_use$Bites) 
 
 # Season
-table(KG_Magic_P_use$Season) #Spring = 350, winter = 78
-table(KG_Magic_M_use$Season) #Spring = 404, winter = 82
-table(KG_Magic_CP_use$Season) #Spring = 405, winter = 82
+table(KG_Magic_P_use$Season) 
+table(KG_Magic_M_use$Season) 
+table(KG_Magic_CP_use$Season) 
 
 # Patch type
-table(KG_Magic_P_use$PatchType) #Off = 244, on = 184
-table(KG_Magic_M_use$PatchType) #Off = 277, on = 209
-table(KG_Magic_CP_use$PatchType) #Off = 278, on = 209
+table(KG_Magic_P_use$PatchType) 
+table(KG_Magic_M_use$PatchType) 
+table(KG_Magic_CP_use$PatchType) 
 
 #Mins and Maxes
-min(KG_Magic_P_use$Phenolics_Ref_std) #-1.238274
-max(KG_Magic_P_use$Phenolics_Ref_std) #3.270009
-min(KG_Magic_P_use$Phenolics_Pred_std) #-1.363222
-max(KG_Magic_P_use$Phenolics_Pred_std) #1.415847
+min(KG_Magic_P_use$Phenolics_Ref_std) 
+max(KG_Magic_P_use$Phenolics_Ref_std) 
+min(KG_Magic_P_use$Phenolics_Pred_std) 
+max(KG_Magic_P_use$Phenolics_Pred_std) 
 
-min(KG_Magic_M_use$Monoterpenes_Ref_std) #-0.9916437
-max(KG_Magic_M_use$Monoterpenes_Ref_std) #1.501891
-min(KG_Magic_M_use$Monoterpenes_Pred_std) #-1.459817
-max(KG_Magic_M_use$Monoterpenes_Pred_std) #0.8884188
+min(KG_Magic_M_use$Monoterpenes_Ref_std) 
+max(KG_Magic_M_use$Monoterpenes_Ref_std) 
+min(KG_Magic_M_use$Monoterpenes_Pred_std) 
+max(KG_Magic_M_use$Monoterpenes_Pred_std) 
 
-min(KG_Magic_CP_use$CP_Ref_std) #-1.30037
-max(KG_Magic_CP_use$CP_Ref_std) #2.488451
-min(KG_Magic_CP_use$CP_Pred_std) #-1.34902
-max(KG_Magic_CP_use$CP_Pred_std) #2.00042
+min(KG_Magic_CP_use$CP_Ref_std) 
+max(KG_Magic_CP_use$CP_Ref_std) 
+min(KG_Magic_CP_use$CP_Pred_std) 
+max(KG_Magic_CP_use$CP_Pred_std) 
 
 ## Descriptive Stats
 
 # Phenolics
-mean(KG_Magic_P$Phenolics_Ref, na.rm=TRUE) #11.94784
-sd(KG_Magic_P$Phenolics_Ref, na.rm=TRUE) #4.441225
-mean(KG_Magic_P$Phenolics_newpred, na.rm=TRUE) #11.9506
-sd(KG_Magic_P$Phenolics_newpred, na.rm=TRUE) #5.961768
+mean(KG_Magic_P$Phenolics_Ref, na.rm=TRUE)
+sd(KG_Magic_P$Phenolics_Ref, na.rm=TRUE) 
+mean(KG_Magic_P$Phenolics_newpred, na.rm=TRUE) 
+sd(KG_Magic_P$Phenolics_newpred, na.rm=TRUE) 
 
-mean(KG_Magic_P_use$Phenolics_Ref_std, na.rm=TRUE) #5.162018e-17
-sd(KG_Magic_P_use$Phenolics_Ref_std, na.rm=TRUE) #0.5
-mean(KG_Magic_P_use$Phenolics_Pred_std, na.rm=TRUE) #-2.879317e-17
-sd(KG_Magic_P_use$Phenolics_Pred_std, na.rm=TRUE) #0.5
+mean(KG_Magic_P_use$Phenolics_Ref_std, na.rm=TRUE) 
+sd(KG_Magic_P_use$Phenolics_Ref_std, na.rm=TRUE) 
+mean(KG_Magic_P_use$Phenolics_Pred_std, na.rm=TRUE) 
+sd(KG_Magic_P_use$Phenolics_Pred_std, na.rm=TRUE) 
 
 # Monoterpenes
-mean(KG_Magic_M$Monoterpenes_Ref, na.rm=TRUE) #2204.957
-sd(KG_Magic_M$Monoterpenes_Ref, na.rm=TRUE) #893.7906
-mean(KG_Magic_M$Monoterpenes_newpred, na.rm=TRUE) #2176.32
-sd(KG_Magic_M$Monoterpenes_newpred, na.rm=TRUE) #722.4094
+mean(KG_Magic_M$Monoterpenes_Ref, na.rm=TRUE)
+sd(KG_Magic_M$Monoterpenes_Ref, na.rm=TRUE) 
+mean(KG_Magic_M$Monoterpenes_newpred, na.rm=TRUE) 
+sd(KG_Magic_M$Monoterpenes_newpred, na.rm=TRUE) 
 
-mean(KG_Magic_M_use$Monoterpenes_Ref_std, na.rm=TRUE) #0.01686997
-sd(KG_Magic_M_use$Monoterpenes_Ref_std, na.rm=TRUE) #0.4939539
-mean(KG_Magic_M_use$Monoterpenes_Pred_std, na.rm=TRUE) #0.01791427
-sd(KG_Magic_M_use$Monoterpenes_Pred_std, na.rm=TRUE) #0.4920768
+mean(KG_Magic_M_use$Monoterpenes_Ref_std, na.rm=TRUE) 
+sd(KG_Magic_M_use$Monoterpenes_Ref_std, na.rm=TRUE) 
+mean(KG_Magic_M_use$Monoterpenes_Pred_std, na.rm=TRUE) 
+sd(KG_Magic_M_use$Monoterpenes_Pred_std, na.rm=TRUE) 
 
 # Crude Proteins
-mean(KG_Magic_CP$CP_Ref, na.rm=TRUE) #10.47658
-sd(KG_Magic_CP$CP_Ref, na.rm=TRUE) #1.913524
-mean(KG_Magic_CP$CP_newpred, na.rm=TRUE) #10.49879
-sd(KG_Magic_CP$CP_newpred, na.rm=TRUE) #1.537988
+mean(KG_Magic_CP$CP_Ref, na.rm=TRUE) 
+sd(KG_Magic_CP$CP_Ref, na.rm=TRUE) 
+mean(KG_Magic_CP$CP_newpred, na.rm=TRUE) 
+sd(KG_Magic_CP$CP_newpred, na.rm=TRUE) 
 
-mean(KG_Magic_CP_use$CP_Ref_std, na.rm=TRUE) #0.009071084
-sd(KG_Magic_CP_use$CP_Ref_std, na.rm=TRUE) #0.5018873
-mean(KG_Magic_CP_use$CP_Pred_std, na.rm=TRUE) #0.003424819
-sd(KG_Magic_CP_use$CP_Pred_std, na.rm=TRUE) #0.5024934
+mean(KG_Magic_CP_use$CP_Ref_std, na.rm=TRUE) 
+sd(KG_Magic_CP_use$CP_Ref_std, na.rm=TRUE) 
+mean(KG_Magic_CP_use$CP_Pred_std, na.rm=TRUE) 
+sd(KG_Magic_CP_use$CP_Pred_std, na.rm=TRUE) 
 
 ```
 
@@ -474,9 +474,9 @@ length(KG_pred_P)
 # Likelihood of observed data, given predicted data. 
 
 # Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
-mae(KG_null_P,KG_obs_P) #9.747313
-mae(KG_ref_P,KG_obs_P) #9.881806
-mae(KG_pred_P, KG_obs_P) #9.876057
+mae(KG_null_P,KG_obs_P) 
+mae(KG_ref_P,KG_obs_P) 
+mae(KG_pred_P, KG_obs_P) 
 
 ###########################Monoterpenes
 # In this code, we are creating subsets of the data
@@ -565,18 +565,18 @@ KG_total_M <- KG_logo_M$out_data$Bites
 # 1 = whether you're doing the mean across rows or columns
 # Trying to predict across patchm, to create something in a list. 
 KG_null_M <- apply(null_preds_M,1,mean)
-length(KG_null_M) #486
+length(KG_null_M) 
 KG_ref_M <- apply(ref_preds_M,1,mean)
-length(KG_ref_M) #486
+length(KG_ref_M) 
 KG_pred_M <- apply(pred_preds_M,1,mean)
-length(KG_pred_M) #486
+length(KG_pred_M) 
 
 # Likelihood of observed data, given predicted data. 
 
 # Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
-mae(KG_null_M,KG_obs_M) #9.882156
-mae(KG_ref_M,KG_obs_M) #9.925131
-mae(KG_pred_M, KG_obs_M) #9.914694
+mae(KG_null_M,KG_obs_M) 
+mae(KG_ref_M,KG_obs_M) 
+mae(KG_pred_M, KG_obs_M) 
 
 ###########################Crude Protein
 # In this code, we are creating subsets of the data
@@ -664,18 +664,18 @@ KG_total_CP <- KG_logo_CP$out_data$Bites
 # 1 = whether you're doing the mean across rows or columns
 # Trying to predict across patchm, to create something in a list. 
 KG_null_CP<-apply(null_preds_CP,1,mean)
-length(KG_null_CP) #487
+length(KG_null_CP) 
 KG_ref_CP<-apply(ref_preds_CP,1,mean)
-length(KG_ref_CP) #487
+length(KG_ref_CP) 
 KG_pred_CP<-apply(pred_preds_CP,1,mean)
-length(KG_pred_CP) #487
+length(KG_pred_CP) 
 
 # Likelihood of observed data, given predicted data. 
 
 # Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
-mae(KG_null_CP,KG_obs_CP) #9.86572
-mae(KG_ref_CP,KG_obs_CP) #10.92547
-mae(KG_pred_CP, KG_obs_CP) #10.96559
+mae(KG_null_CP,KG_obs_CP) 
+mae(KG_ref_CP,KG_obs_CP) 
+mae(KG_pred_CP, KG_obs_CP) 
 ```
 
 # General posterior draw descriptive statistics
@@ -709,12 +709,12 @@ pred_KG_posteriors_M <- data.frame(mPRED_KG_Magic_single_M)
 ref_KG_posteriors_CP <- data.frame(mREF_KG_Magic_single_CP)
 pred_KG_posteriors_CP <- data.frame(mPRED_KG_Magic_single_CP)
 
-dim(ref_KG_posteriors_P) #20000    25
-dim(pred_KG_posteriors_P) #20000    25
-dim(ref_KG_posteriors_M) #20000    27
-dim(pred_KG_posteriors_M) #20000    27
-dim(ref_KG_posteriors_CP) #20000    27
-dim(pred_KG_posteriors_CP) #20000    27
+dim(ref_KG_posteriors_P) 
+dim(pred_KG_posteriors_P) 
+dim(ref_KG_posteriors_M) 
+dim(pred_KG_posteriors_M) 
+dim(ref_KG_posteriors_CP) 
+dim(pred_KG_posteriors_CP) 
 
 ```
 
@@ -725,19 +725,19 @@ What is the percentage of draws that are either positive of negative?
 ```{r}
 
 # Crude Proteins
-length(which(ref_KG_posteriors_CP$CP_Ref_std>0))/length(ref_KG_posteriors_CP$CP_Ref_std) #1
+length(which(ref_KG_posteriors_CP$CP_Ref_std>0))/length(ref_KG_posteriors_CP$CP_Ref_std) 
  
-length(which(ref_KG_posteriors_CP$CP_Ref_std<0))/length(ref_KG_posteriors_CP$CP_Ref_std) #0
+length(which(ref_KG_posteriors_CP$CP_Ref_std<0))/length(ref_KG_posteriors_CP$CP_Ref_std) 
 
 # Monoterpenes
-length(which(ref_KG_posteriors_M$Monoterpenes_Ref_std>0))/length(ref_KG_posteriors_M$Monoterpenes_Ref_std) #0.00515
+length(which(ref_KG_posteriors_M$Monoterpenes_Ref_std>0))/length(ref_KG_posteriors_M$Monoterpenes_Ref_std) 
 
-length(which(ref_KG_posteriors_M$Monoterpenes_Ref_std<0))/length(ref_KG_posteriors_M$Monoterpenes_Ref_std) #0.99485
+length(which(ref_KG_posteriors_M$Monoterpenes_Ref_std<0))/length(ref_KG_posteriors_M$Monoterpenes_Ref_std) 
 
 # Phenolics
-length(which(ref_KG_posteriors_P$Phenolics_Ref_std>0))/length(ref_KG_posteriors_P$Phenolics_Ref_std) #7e-04
+length(which(ref_KG_posteriors_P$Phenolics_Ref_std>0))/length(ref_KG_posteriors_P$Phenolics_Ref_std) 
 
-length(which(ref_KG_posteriors_P$Phenolics_Ref_std<0))/length(ref_KG_posteriors_P$Phenolics_Ref_std) #0.9993
+length(which(ref_KG_posteriors_P$Phenolics_Ref_std<0))/length(ref_KG_posteriors_P$Phenolics_Ref_std) 
 
 ```
 
@@ -748,19 +748,19 @@ What is the percentage of draws that are either positive of negative?
 ```{r}
 
 # Crude Proteins
-length(which(pred_KG_posteriors_CP$CP_Pred_std>0))/length(pred_KG_posteriors_CP$CP_Pred_std) #0.9999
+length(which(pred_KG_posteriors_CP$CP_Pred_std>0))/length(pred_KG_posteriors_CP$CP_Pred_std) 
 
-length(which(pred_KG_posteriors_CP$CP_Pred_std<0))/length(pred_KG_posteriors_CP$CP_Pred_std) #1e-04
+length(which(pred_KG_posteriors_CP$CP_Pred_std<0))/length(pred_KG_posteriors_CP$CP_Pred_std) 
 
 # Monoterpenes
-length(which(pred_KG_posteriors_M$Monoterpenes_Pred_std>0))/length(pred_KG_posteriors_M$Monoterpenes_Pred_std) #0.0187
+length(which(pred_KG_posteriors_M$Monoterpenes_Pred_std>0))/length(pred_KG_posteriors_M$Monoterpenes_Pred_std) 
 
-length(which(pred_KG_posteriors_M$Monoterpenes_Pred_std<0))/length(pred_KG_posteriors_M$Monoterpenes_Pred_std) #0.9813
+length(which(pred_KG_posteriors_M$Monoterpenes_Pred_std<0))/length(pred_KG_posteriors_M$Monoterpenes_Pred_std) 
 
 # Phenolics
-length(which(pred_KG_posteriors_P$Phenolics_Pred_std>0))/length(pred_KG_posteriors_P$Phenolics_Pred_std) #0.4755
+length(which(pred_KG_posteriors_P$Phenolics_Pred_std>0))/length(pred_KG_posteriors_P$Phenolics_Pred_std) 
 
-length(which(pred_KG_posteriors_P$Phenolics_Pred_std<0))/length(pred_KG_posteriors_P$Phenolics_Pred_std) #0.5245
+length(which(pred_KG_posteriors_P$Phenolics_Pred_std<0))/length(pred_KG_posteriors_P$Phenolics_Pred_std) 
 
 ```
 
@@ -788,9 +788,7 @@ max_pred_P <- exp(ref_KG_posteriors_P$X.Intercept.[i]+ref_KG_posteriors_P$Phenol
 predicted_diff_Phenolics_ref[i] <- max_pred_P-min_pred_P # This is the difference we will store. feel free to reverse the order here, depending on what you want to report.
 }  
 
-quantile(predicted_diff_Phenolics_ref,c(0.025,0.5,0.975)) 
-#      2.5%        50%      97.5% 
-#-13.584453  -8.652583  -4.170438   
+quantile(predicted_diff_Phenolics_ref,c(0.025,0.5,0.975))   
 
 # Monoterpenes
 for(i in 1:ncol(ref_KG_posteriors_M)){
@@ -804,8 +802,6 @@ predicted_diff_Monoterpenes_ref[i]<- max_pred_M-min_pred_M # This is the differe
 }  
 
 quantile(predicted_diff_Monoterpenes_ref,c(0.025,0.5,0.975)) 
-#      2.5%        50%      97.5% 
-#-17.672075  -6.605915  -1.431594 
 
 # CP
 
@@ -820,8 +816,6 @@ predicted_diff_cp_ref[i] <- max_pred_CP-min_pred_CP #This is the difference we w
   }  
 
 quantile(predicted_diff_cp_ref,c(0.025,0.5,0.975)) 
-#      2.5%        50%      97.5% 
-#  14.45729  49.17426 159.41638
 
 ```
 
@@ -830,8 +824,8 @@ quantile(predicted_diff_cp_ref,c(0.025,0.5,0.975))
 ```{r}
 
 # Referencing min and max from data frame
-chemm$Pred_Min[which(chemm$Site=="KG_Magic" & chemm$Chemical=="Crude Protein")] #-1.34902
-chemm$Pred_Max[which(chemm$Site=="KG_Magic" & chemm$Chemical=="Crude Protein")] #2.00042
+chemm$Pred_Min[which(chemm$Site=="KG_Magic" & chemm$Chemical=="Crude Protein")] 
+chemm$Pred_Max[which(chemm$Site=="KG_Magic" & chemm$Chemical=="Crude Protein")]
 
 # Setting up an empty vector to fill in with predictions
 predicted_diff_cp_pred <- rep(NA,times=ncol(pred_KG_posteriors_CP))
@@ -850,9 +844,6 @@ predicted_diff_Phenolics_pred[i] <- max_pred_P-min_pred_P # This is the differen
 }  
 
 quantile(predicted_diff_Phenolics_pred,c(0.025,0.5,0.975)) 
-#      2.5%        50%      97.5% 
-#-6.0048006  0.1607879  5.3396647 
-
 
 # Monoterpenes
 for(i in 1:ncol(pred_KG_posteriors_M)){
@@ -866,8 +857,6 @@ predicted_diff_Monoterpenes_pred[i] <- max_pred_M-min_pred_M # This is the diffe
 }  
 
 quantile(predicted_diff_Monoterpenes_pred,c(0.025,0.5,0.975)) 
-#       2.5%         50%       97.5% 
-#-60.517659 -16.111058  -3.653675 
 
 # CP
 for(i in 1:ncol(pred_KG_posteriors_CP)){
@@ -881,8 +870,6 @@ predicted_diff_cp_pred[i]<-max_pred_CP-min_pred_CP # This is the difference we w
   }  
 
 quantile(predicted_diff_cp_pred,c(0.025,0.5,0.975)) 
-#     2.5%       50%     97.5% 
- #5.447717 32.567988 75.554162 
 
 ```
 
