@@ -142,34 +142,34 @@ raft_river_CP <- merge(RR_CP,mbit,by.x="Sample",by.y="Sample")
 
 ## Check out the dimensions of the input data:
 # Bites
-length(raft_river_P$bites_binomial) #685
+length(raft_river_P$bites_binomial) 
 table(raft_river_P$bites_binomial)
 
-length(raft_river_M$bites_binomial) #708
+length(raft_river_M$bites_binomial) 
 table(raft_river_M$bites_binomial)
 
-length(raft_river_CP$bites_binomial) #530
+length(raft_river_CP$bites_binomial) 
 table(raft_river_CP$bites_binomial)
 
 # Season #One season only
-table(raft_river_P$Season) #Winter 685
-table(raft_river_M$Season) #Winter 708
-table(raft_river_CP$Season) #Winter 530
+table(raft_river_P$Season) 
+table(raft_river_M$Season) 
+table(raft_river_CP$Season) 
 
 # Species
-table(raft_river_P$Species) #arbuscula 521  basin 3  wyoming 161
-table(raft_river_M$Species) #arbuscula 535  basin 3  wyoming 170
-table(raft_river_CP$Species) #arbuscula 369  wyoming 161
+table(raft_river_P$Species)
+table(raft_river_M$Species) 
+table(raft_river_CP$Species) 
 
 # Plant height
-table(raft_river_P$PlantSize) #large 76 medium  353 small 256
-table(raft_river_M$PlantSize) #large 76 medium  373 small 259
-table(raft_river_CP$PlantSize) #large 67 medium  336 small 127
+table(raft_river_P$PlantSize) 
+table(raft_river_M$PlantSize) 
+table(raft_river_CP$PlantSize) 
 
 # Patch type
-table(raft_river_P$PatchType.x) #random 202 used 483
-table(raft_river_M$PatchType.x) #random 218 used 490
-table(raft_river_CP$PatchType.x) #random 157 used 373
+table(raft_river_P$PatchType.x)
+table(raft_river_M$PatchType.x) 
+table(raft_river_CP$PatchType.x) 
 
 #Patch_ID here is the random effect.
 
@@ -218,92 +218,92 @@ raft_river_CP_use$raft_river_bound<-raft_river_bound_CP
 
 ## Check out the dimensions of the final data:
 # Bites
-length(raft_river_P_use$Bites) #685
+length(raft_river_P_use$Bites) 
 table(raft_river_P_use$Bites)
 
-length(raft_river_M_use$Bites) #705
+length(raft_river_M_use$Bites) 
 table(raft_river_M_use$Bites)
 
-length(raft_river_CP_use$Bites) #527
+length(raft_river_CP_use$Bites) 
 table(raft_river_CP_use$Bites)
 
 # Bites Bound
-length(raft_river_P_use$raft_river_bound) #1370, which is double the bites (successes/failures)
+length(raft_river_P_use$raft_river_bound) 
 table(raft_river_P_use$raft_river_bound)
 
-length(raft_river_M_use$raft_river_bound) #1410, which is double the bites (successes/failures)
+length(raft_river_M_use$raft_river_bound) 
 table(raft_river_M_use$raft_river_bound)
 
-length(raft_river_CP_use$raft_river_bound) #1054, which is double the bites (successes/failures)
+length(raft_river_CP_use$raft_river_bound) 
 table(raft_river_CP_use$raft_river_bound)
 
 # Season (not a variable in Raft River)
-table(raft_river_P_use$Season) #< table of extent 0 >
-table(raft_river_M_use$Season) #< table of extent 0 >
-table(raft_river_CP_use$Season) #< table of extent 0 >
+table(raft_river_P_use$Season) 
+table(raft_river_M_use$Season) 
+table(raft_river_CP_use$Season) 
 
 # Patch type
-length(raft_river_P_use$PatchType) #685
+length(raft_river_P_use$PatchType) 
 table(raft_river_P_use$PatchType)
 
-length(raft_river_M_use$PatchType) #705
+length(raft_river_M_use$PatchType) 
 table(raft_river_M_use$PatchType)
 
-length(raft_river_CP_use$PatchType) #527
+length(raft_river_CP_use$PatchType) 
 table(raft_river_CP_use$PatchType)
 
 # Descriptive Stats
 
-min(raft_river_P_use$Phenolics_Ref_std) #-0.8081013
-max(raft_river_P_use$Phenolics_Ref_std) #1.051032
-min(raft_river_P_use$Phenolics_Pred_std) #-1.250854
-max(raft_river_P_use$Phenolics_Pred_std) #0.7229689
+min(raft_river_P_use$Phenolics_Ref_std)
+max(raft_river_P_use$Phenolics_Ref_std) 
+min(raft_river_P_use$Phenolics_Pred_std) 
+max(raft_river_P_use$Phenolics_Pred_std) 
 
-min(raft_river_M_use$Monoterpenes_Ref_std) #-1.115498
-max(raft_river_M_use$Monoterpenes_Ref_std) #2.116384
-min(raft_river_M_use$Monoterpenes_Pred_std) #-1.042041
-max(raft_river_M_use$Monoterpenes_Pred_std) #2.487175
+min(raft_river_M_use$Monoterpenes_Ref_std) 
+max(raft_river_M_use$Monoterpenes_Ref_std) 
+min(raft_river_M_use$Monoterpenes_Pred_std) 
+max(raft_river_M_use$Monoterpenes_Pred_std) 
 
-min(raft_river_CP_use$CP_Ref_std) #-1.032372
-max(raft_river_CP_use$CP_Ref_std) #1.712733
-min(raft_river_CP_use$CP_Pred_std) #-1.37963
-max(raft_river_CP_use$CP_Pred_std) #1.805113
+min(raft_river_CP_use$CP_Ref_std) 
+max(raft_river_CP_use$CP_Ref_std) 
+min(raft_river_CP_use$CP_Pred_std) 
+max(raft_river_CP_use$CP_Pred_std) 
 
 ## Descriptive Stats
 
 # Phenolics
-mean(raft_river_P$Phenolics_Ref, na.rm=TRUE) #54.37914
-sd(raft_river_P$Phenolics_Ref, na.rm=TRUE) #29.05404
-mean(raft_river_P$Phenolics_newpred, na.rm=TRUE) #50.89874
-sd(raft_river_P$Phenolics_newpred, na.rm=TRUE) #20.6362
+mean(raft_river_P$Phenolics_Ref, na.rm=TRUE) 
+sd(raft_river_P$Phenolics_Ref, na.rm=TRUE) 
+mean(raft_river_P$Phenolics_newpred, na.rm=TRUE)
+sd(raft_river_P$Phenolics_newpred, na.rm=TRUE) 
 
-mean(raft_river_P_use$Phenolics_Ref_std, na.rm=TRUE) #3.132126e-16
-sd(raft_river_P_use$Phenolics_Ref_std, na.rm=TRUE) #0.5
-mean(raft_river_P_use$Phenolics_Pred_std, na.rm=TRUE) #1.153984e-16
-sd(raft_river_P_use$Phenolics_Pred_std, na.rm=TRUE) #0.5
+mean(raft_river_P_use$Phenolics_Ref_std, na.rm=TRUE) 
+sd(raft_river_P_use$Phenolics_Ref_std, na.rm=TRUE) 
+mean(raft_river_P_use$Phenolics_Pred_std, na.rm=TRUE) 
+sd(raft_river_P_use$Phenolics_Pred_std, na.rm=TRUE) 
 
 # Monoterpenes
-mean(raft_river_M$Monoterpenes_Ref, na.rm=TRUE) #560.1588
-sd(raft_river_M$Monoterpenes_Ref, na.rm=TRUE) #179.2339
-mean(raft_river_M$Monoterpenes_newpred, na.rm=TRUE) #631.4248
-sd(raft_river_M$Monoterpenes_newpred, na.rm=TRUE) #152.369
+mean(raft_river_M$Monoterpenes_Ref, na.rm=TRUE) 
+sd(raft_river_M$Monoterpenes_Ref, na.rm=TRUE) 
+mean(raft_river_M$Monoterpenes_newpred, na.rm=TRUE) 
+sd(raft_river_M$Monoterpenes_newpred, na.rm=TRUE) 
 
-mean(raft_river_M_use$Monoterpenes_Ref_std, na.rm=TRUE) #-0.008582074
-sd(raft_river_M_use$Monoterpenes_Ref_std, na.rm=TRUE) #0.4833826
-mean(raft_river_M_use$Monoterpenes_Pred_std, na.rm=TRUE) #-0.001734344
-sd(raft_river_M_use$Monoterpenes_Pred_std, na.rm=TRUE) #0.5003543
+mean(raft_river_M_use$Monoterpenes_Ref_std, na.rm=TRUE) 
+sd(raft_river_M_use$Monoterpenes_Ref_std, na.rm=TRUE) 
+mean(raft_river_M_use$Monoterpenes_Pred_std, na.rm=TRUE) 
+sd(raft_river_M_use$Monoterpenes_Pred_std, na.rm=TRUE) 
 
 # Crude Proteins
 
-mean(raft_river_CP$CP_Ref, na.rm=TRUE) #13.64623
-sd(raft_river_CP$CP_Ref, na.rm=TRUE) #1.475354
-mean(raft_river_CP$CP_newpred, na.rm=TRUE) #13.66276
-sd(raft_river_CP$CP_newpred, na.rm=TRUE) #1.381659
+mean(raft_river_CP$CP_Ref, na.rm=TRUE) 
+sd(raft_river_CP$CP_Ref, na.rm=TRUE) 
+mean(raft_river_CP$CP_newpred, na.rm=TRUE) 
+sd(raft_river_CP$CP_newpred, na.rm=TRUE) 
 
-mean(raft_river_CP_use$CP_Ref_std, na.rm=TRUE) #-0.006663132
-sd(raft_river_CP_use$CP_Ref_std, na.rm=TRUE) #0.4935255
-mean(raft_river_CP_use$CP_Pred_std, na.rm=TRUE) #-0.002243089
-sd(raft_river_CP_use$CP_Pred_std, na.rm=TRUE) #0.500535
+mean(raft_river_CP_use$CP_Ref_std, na.rm=TRUE) 
+sd(raft_river_CP_use$CP_Ref_std, na.rm=TRUE) 
+mean(raft_river_CP_use$CP_Pred_std, na.rm=TRUE) 
+sd(raft_river_CP_use$CP_Pred_std, na.rm=TRUE) 
 
 ```
 
@@ -494,22 +494,22 @@ raft_river_obs_P <- raft_river_logo_P$out_data$raft_river_bound[,1]
 raft_river_total_P <- raft_river_logo_P$out_data$raft_river_bound[,2]
 
 raft_river_null_P <- apply(null_preds_P,1,mean)
-length(raft_river_null_P) #685
+length(raft_river_null_P) 
 raft_river_ref_P<-apply(ref_preds_P,1,mean)
-length(raft_river_ref_P) #685
+length(raft_river_ref_P) 
 raft_river_pred_P<-apply(pred_preds_P,1,mean)
-length(raft_river_pred_P) #685
+length(raft_river_pred_P) 
 
 # Likelihood of observed data, given predicted data. 
 
--sum(dbinom(raft_river_obs_P,prob=raft_river_ref_P/raft_river_total_P,size=50,log=T),na.rm=T) #Warning: NaNs produced[1] 13790.24
--sum(dbinom(raft_river_obs_P,prob=raft_river_null_P/raft_river_total_P,size=50,log=T),na.rm=T) #Warning: NaNs produced[1] 13782.41
--sum(dbinom(raft_river_obs_P,prob=raft_river_pred_P/raft_river_total_P,size=50,log=T),na.rm=T) #Warning: NaNs produced[1] 13819.71
+-sum(dbinom(raft_river_obs_P,prob=raft_river_ref_P/raft_river_total_P,size=50,log=T),na.rm=T) 
+-sum(dbinom(raft_river_obs_P,prob=raft_river_null_P/raft_river_total_P,size=50,log=T),na.rm=T) 
+-sum(dbinom(raft_river_obs_P,prob=raft_river_pred_P/raft_river_total_P,size=50,log=T),na.rm=T) 
 
 # Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
-mae(raft_river_null_P,raft_river_obs_P) #7.209838
-mae(raft_river_ref_P,raft_river_obs_P) #7.208867
-mae(raft_river_pred_P, raft_river_obs_P) #7.211305
+mae(raft_river_null_P,raft_river_obs_P) 
+mae(raft_river_ref_P,raft_river_obs_P) 
+mae(raft_river_pred_P, raft_river_obs_P) 
 
 ###################Monoterpenes
 # In this code, we are creating subsets of the data
@@ -582,22 +582,22 @@ raft_river_obs_M <- raft_river_logo_M$out_data$raft_river_bound[,1]
 raft_river_total_M <- raft_river_logo_M$out_data$raft_river_bound[,2]
 
 raft_river_null_M <- apply(null_preds_M,1,mean)
-length(raft_river_null_M) #705
+length(raft_river_null_M) 
 raft_river_ref_M<-apply(ref_preds_M,1,mean)
-length(raft_river_ref_M) #705
+length(raft_river_ref_M) 
 raft_river_pred_M<-apply(pred_preds_M,1,mean)
-length(raft_river_pred_M) #705
+length(raft_river_pred_M) 
 
 # Likelihood of observed data, given predicted data. 
 
--sum(dbinom(raft_river_obs_M,prob=raft_river_ref_M/raft_river_total_M,size=50,log=T),na.rm=T) #Warning: NaNs produced[1] 14165.09
--sum(dbinom(raft_river_obs_M,prob=raft_river_null_M/raft_river_total_M,size=50,log=T),na.rm=T) #Warning: NaNs produced[1] 14376.71
--sum(dbinom(raft_river_obs_M,prob=raft_river_pred_M/raft_river_total_M,size=50,log=T),na.rm=T) #Warning: NaNs produced[1] 14468.34
+-sum(dbinom(raft_river_obs_M,prob=raft_river_ref_M/raft_river_total_M,size=50,log=T),na.rm=T) 
+-sum(dbinom(raft_river_obs_M,prob=raft_river_null_M/raft_river_total_M,size=50,log=T),na.rm=T) 
+-sum(dbinom(raft_river_obs_M,prob=raft_river_pred_M/raft_river_total_M,size=50,log=T),na.rm=T) 
 
 # Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
-mae(raft_river_null_M,raft_river_obs_M) #7.203225
-mae(raft_river_ref_M,raft_river_obs_M) #7.200925
-mae(raft_river_pred_M, raft_river_obs_M) #7.204382
+mae(raft_river_null_M,raft_river_obs_M) 
+mae(raft_river_ref_M,raft_river_obs_M) 
+mae(raft_river_pred_M, raft_river_obs_M) 
 
 ###################CP
 # In this code, we are creating subsets of the data
@@ -670,22 +670,22 @@ raft_river_obs_CP <- raft_river_logo_CP$out_data$raft_river_bound[,1]
 raft_river_total_CP <- raft_river_logo_CP$out_data$raft_river_bound[,2]
 
 raft_river_null_CP <- apply(null_preds_CP,1,mean)
-length(raft_river_null_CP) #527
+length(raft_river_null_CP) 
 raft_river_ref_CP<-apply(ref_preds_CP,1,mean)
-length(raft_river_ref_CP) #527
+length(raft_river_ref_CP) 
 raft_river_pred_CP<-apply(pred_preds_CP,1,mean)
-length(raft_river_pred_CP) #527
+length(raft_river_pred_CP) 
 
 # Likelihood of observed data, given predicted data. 
 
--sum(dbinom(raft_river_obs_CP,prob=raft_river_ref_CP/raft_river_total_CP,size=50,log=T),na.rm=T) #Warning: NaNs produced[1] 10319.65
--sum(dbinom(raft_river_obs_CP,prob=raft_river_null_CP/raft_river_total_CP,size=50,log=T),na.rm=T) #Warning: NaNs produced[1] 10641.4
--sum(dbinom(raft_river_obs_CP,prob=raft_river_pred_CP/raft_river_total_CP,size=50,log=T),na.rm=T) #Warning: NaNs produced[1] 10701.69
+-sum(dbinom(raft_river_obs_CP,prob=raft_river_ref_CP/raft_river_total_CP,size=50,log=T),na.rm=T) 
+-sum(dbinom(raft_river_obs_CP,prob=raft_river_null_CP/raft_river_total_CP,size=50,log=T),na.rm=T) 
+-sum(dbinom(raft_river_obs_CP,prob=raft_river_pred_CP/raft_river_total_CP,size=50,log=T),na.rm=T) 
 
 # Mean absolute error, defined above. This is on the scale of the data, so the negative log likelihoods (which are a bit abstract) make more sense. 
-mae(raft_river_null_CP,raft_river_obs_CP) #7.400826
-mae(raft_river_ref_CP,raft_river_obs_CP) #7.394801
-mae(raft_river_pred_CP, raft_river_obs_CP) #7.401543
+mae(raft_river_null_CP,raft_river_obs_CP) 
+mae(raft_river_ref_CP,raft_river_obs_CP) 
+mae(raft_river_pred_CP, raft_river_obs_CP) 
 
 ```
 
@@ -719,14 +719,14 @@ pred_RR_posteriors_M <- data.frame(mPRED_RR_single_M)
 ref_RR_posteriors_CP <- data.frame(mREF_RR_single_CP)
 pred_RR_posteriors_CP <- data.frame(mPRED_RR_single_CP)
 
-dim(ref_RR_posteriors_P) #20000    49
-dim(pred_RR_posteriors_P) #20000    49
+dim(ref_RR_posteriors_P) 
+dim(pred_RR_posteriors_P) 
 
-dim(ref_RR_posteriors_M) #20000    49
-dim(pred_RR_posteriors_M) #20000    49
+dim(ref_RR_posteriors_M) 
+dim(pred_RR_posteriors_M) 
 
-dim(ref_RR_posteriors_CP) #20000    48
-dim(pred_RR_posteriors_CP) #20000    48
+dim(ref_RR_posteriors_CP) 
+dim(pred_RR_posteriors_CP) 
 
 ```
 
@@ -737,16 +737,16 @@ What is the percentage of draws that are either positive of negative?
 ```{r}
 
 # Phenolics
-length(which(ref_RR_posteriors_P$Phenolics_Ref_std>0))/length(ref_RR_posteriors_P$Phenolics_Ref_std) #0
-length(which(ref_RR_posteriors_P$Phenolics_Ref_std<0))/length(ref_RR_posteriors_P$Phenolics_Ref_std) #1
+length(which(ref_RR_posteriors_P$Phenolics_Ref_std>0))/length(ref_RR_posteriors_P$Phenolics_Ref_std) 
+length(which(ref_RR_posteriors_P$Phenolics_Ref_std<0))/length(ref_RR_posteriors_P$Phenolics_Ref_std) 
 
 # Monoterpenes
-length(which(ref_RR_posteriors_M$Monoterpenes_Ref_std>0))/length(ref_RR_posteriors_M$Monoterpenes_Ref_std) #0
-length(which(ref_RR_posteriors_M$Monoterpenes_Ref_std<0))/length(ref_RR_posteriors_M$Monoterpenes_Ref_std) #1
+length(which(ref_RR_posteriors_M$Monoterpenes_Ref_std>0))/length(ref_RR_posteriors_M$Monoterpenes_Ref_std) 
+length(which(ref_RR_posteriors_M$Monoterpenes_Ref_std<0))/length(ref_RR_posteriors_M$Monoterpenes_Ref_std) 
 
 # Crude Proteins
-length(which(ref_RR_posteriors_CP$CP_Ref_std>0))/length(ref_RR_posteriors_CP$CP_Ref_std) #0
-length(which(ref_RR_posteriors_CP$CP_Ref_std<0))/length(ref_RR_posteriors_CP$CP_Ref_std) #1
+length(which(ref_RR_posteriors_CP$CP_Ref_std>0))/length(ref_RR_posteriors_CP$CP_Ref_std) 
+length(which(ref_RR_posteriors_CP$CP_Ref_std<0))/length(ref_RR_posteriors_CP$CP_Ref_std)
 
 ```
 
@@ -757,16 +757,16 @@ What is the percentage of draws that are either positive of negative?
 ```{r}
 
 # Phenolics
-length(which(pred_RR_posteriors_P$Phenolics_Pred_std>0))/length(pred_RR_posteriors_P$Phenolics_Pred_std) #0.69435
-length(which(pred_RR_posteriors_P$Phenolics_Pred_std<0))/length(pred_RR_posteriors_P$Phenolics_Pred_std) #0.30565
+length(which(pred_RR_posteriors_P$Phenolics_Pred_std>0))/length(pred_RR_posteriors_P$Phenolics_Pred_std) 
+length(which(pred_RR_posteriors_P$Phenolics_Pred_std<0))/length(pred_RR_posteriors_P$Phenolics_Pred_std) 
 
 # Monoterpenes
-length(which(pred_RR_posteriors_M$Monoterpenes_Pred_std>0))/length(pred_RR_posteriors_M$Monoterpenes_Pred_std) #0.06195
-length(which(pred_RR_posteriors_M$Monoterpenes_Pred_std<0))/length(pred_RR_posteriors_M$Monoterpenes_Pred_std) #0.93805
+length(which(pred_RR_posteriors_M$Monoterpenes_Pred_std>0))/length(pred_RR_posteriors_M$Monoterpenes_Pred_std) 
+length(which(pred_RR_posteriors_M$Monoterpenes_Pred_std<0))/length(pred_RR_posteriors_M$Monoterpenes_Pred_std) 
 
 # Crude Proteins
-length(which(pred_RR_posteriors_CP$CP_Pred_std>0))/length(pred_RR_posteriors_CP$CP_Pred_std) #0.9999
-length(which(pred_RR_posteriors_CP$CP_Pred_std<0))/length(pred_RR_posteriors_CP$CP_Pred_std) #1e-04
+length(which(pred_RR_posteriors_CP$CP_Pred_std>0))/length(pred_RR_posteriors_CP$CP_Pred_std) 
+length(which(pred_RR_posteriors_CP$CP_Pred_std<0))/length(pred_RR_posteriors_CP$CP_Pred_std) 
 
 ```
 
@@ -795,8 +795,6 @@ predicted_diff_Phenolics_ref[i] <- max_pred_P-min_pred_P # This is the differenc
 }  
 
 quantile(predicted_diff_Phenolics_ref,c(0.025,0.5,0.975)) 
-#       2.5%         50%       97.5% 
-#-0.11185761 -0.09068153 -0.06084328 
 
 # Monoterpenes
 for(i in 1:ncol(ref_RR_posteriors_M)){
@@ -810,8 +808,6 @@ predicted_diff_Monoterpenes_ref[i] <- max_pred_M-min_pred_M # This is the differ
 }  
 
 quantile(predicted_diff_Monoterpenes_ref,c(0.025,0.5,0.975))
-#      2.5%        50%      97.5% 
-#-0.2192810 -0.1960616 -0.1806555 
 
 #Crude Protein
 
@@ -826,8 +822,7 @@ predicted_diff_cp_ref[i] <- max_pred_CP-min_pred_CP # This is the difference we 
   }  
 
 quantile(predicted_diff_cp_ref,c(0.025,0.5,0.975))
-#  2.5%        50%      97.5% 
-#-0.3726312 -0.3181165 -0.2558130
+
 ```
 
 # Effect Size Min & Max - Predicted Chemistry
@@ -856,9 +851,6 @@ predicted_diff_Phenolics_pred[i] <- max_pred_P-min_pred_P # This is the differen
 
 quantile(predicted_diff_Phenolics_pred,c(0.025,0.5,0.975)) 
 
-#         2.5%           50%         97.5% 
-#-0.010010032  0.002176095  0.023022461  
-
 # Monoterpenes
 for(i in 1:ncol(pred_RR_posteriors_M)){
 
@@ -872,9 +864,6 @@ predicted_diff_Monoterpenes_pred[i] <- max_pred_M-min_pred_M # This is the diffe
 
 quantile(predicted_diff_Monoterpenes_pred,c(0.025,0.5,0.975)) 
 
-#       2.5%           50%         97.5% 
-#-0.0437518504 -0.0192045141  0.0006315645 
-
 # CP
 for(i in 1:ncol(pred_RR_posteriors_CP)){
 
@@ -887,8 +876,7 @@ predicted_diff_cp_pred[i] <- max_pred_CP-min_pred_CP # This is the difference we
   }  
 
 quantile(predicted_diff_cp_pred,c(0.025,0.5,0.975))
-#      2.5%        50%      97.5% 
-#0.02710345 0.05704822 0.08933028 
+
 
 ```
 
